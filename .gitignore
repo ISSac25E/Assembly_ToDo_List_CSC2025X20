@@ -3,3 +3,4 @@
 
 # Except the following files
 !*.asm
+!*.md

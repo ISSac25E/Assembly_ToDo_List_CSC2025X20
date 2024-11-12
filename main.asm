@@ -45,8 +45,17 @@ funct@8 endp
 ; take a linked-list object and print content
 ; print_linkedList@4(*linkedList)
 print_linkedList@4 proc near
+rtc_esp_fail
     push ebp
     mov ebp, esp
+
+    mov ecx, esp
+rtc_esp_start
+    push_array_b  'L', 'i', 'n', 'k', 'e', 'd', 'L', 'i', 's', 't', ':', 10, 0
+    pop_array_b  'L', 'i', 'n', 'k', 'e', 'd', 'L', 'i', 's', 't', ':', 10
+rtc_esp_end
+
+
 
 _exit:
     pop ebp
@@ -55,23 +64,13 @@ print_linkedList@4 endp
 
 
 
+
 main PROC near
 rtc_esp_fail
 rtc_esp_start
-
-
-    sub esp, 16
     push esp
-    push -15686589
-    call util@itoa@8 
-    add esp, 16
-
-
-
-
-    add esp, 4
-rtc_esp_end ; stack error
-
+    call print_linkedList@4
+rtc_esp_end
 	push	0
 	call	_ExitProcess@4
 

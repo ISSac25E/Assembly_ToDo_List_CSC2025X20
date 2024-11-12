@@ -59,24 +59,18 @@ main PROC near
 rtc_esp_fail
 rtc_esp_start
 
-    sub esp, 8
+
+    sub esp, 16
     push esp
-    push 1589
+    push -15686589
     call util@itoa@8 
+    add esp, 16
 
 
-    ; linkedList@addNode@16(* this, index, * char)
-    call linkedList@addNode@16
-
-
-rtc_esp_start
-    push [esp]
-    call linkedList@nodeCount@4
-rtc_esp_end 113
 
 
     add esp, 4
-rtc_esp_end 121 ; stack error
+rtc_esp_end ; stack error
 
 	push	0
 	call	_ExitProcess@4

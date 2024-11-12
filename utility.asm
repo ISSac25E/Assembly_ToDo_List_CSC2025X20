@@ -45,53 +45,56 @@ _exit:
     ret 4 
 util@charCount@4 endp
 
-; TODO, accept signed input also
-; convert signed integer into character array
+; convert signed integer into character array. Make sure array has enough space
+; optimized to minimize stack footprint, recursive function
 ; util@itoa@8(int, *buffer)
-; returns void
+; returns address location immediately after written
 util@itoa@8 proc near
-    push ebp ; save base
-    push ebx ; save another register for use
-    mov ebp, esp ; get stack pointer
 
-    mov ebx, [ebp + 12 + (4 * 1)] ; move buffer address
+    ; clean up stack for efficiency:
+    pop edx ; return address
+    pop eax ; integer
+    pop ecx ; buffer address
+    push edx ; return address
 
-    ; load dividend
-    mov eax, [ebp + 12 + (4 * 0)]
+    cmp eax, 0
+    jge _positive_num
+    neg eax ; change to positive value
+    mov byte ptr [ecx], '-'
+
+    inc ecx ; set buffer address to next location
+
+_positive_num:
+    ; dividend already loaded into eax
     mov edx, 0
 
     ; divide by 10
+    push ecx
     mov ecx, 10
     div ecx
+    pop ecx
 
     cmp eax, 0  
     je _baseCase ; nothing left to divide
-
     
     push edx ; push remainder, this gets put on buffer. but a different position
-    push ebx  ; don't modify address, this is not our address
+    push ecx  ; don't modify address, this is not our address
     push eax ; push quotient for further processing
     call util@itoa@8
     ; eax now contains correct position
     pop edx ; restore
-    add edx, '0'
 
-    mov byte ptr [eax], dl
-    inc eax ; prepare for next recursion or parent return
-
-    jmp _exit
+    jmp _write_buffer
 
 _baseCase:
+    mov eax, ecx ; eax contains buffer address now
+
+_write_buffer:
     add edx, '0'
-
-    mov byte ptr [ebx], dl ; move character into buffer (last position)
-
-    inc ebx ; adjust return value for next recursion
-    mov eax, ebx
+    mov byte ptr [eax], dl ; move character into buffer (last position)
+    inc eax ; prepare for next recursion or parent return
 
 _exit:
-    pop ebx
-    pop ebp
-    ret 8 
+    ret ; no params to pop
 util@itoa@8 endp
 end

@@ -30,14 +30,12 @@ extern _HeapAlloc@12 : proc
 extern _HeapFree@12 : proc
 
 extern _RtlMoveMemory@12 : proc
-extern _ExitProcess@4 : proc
 
 include utility.inc
+include rtc_esp.inc
 
 .data
 .code
-
-include rtc_esp.inc
 
 ; add a node in the linked list at specified index
 ; If inputted index exceeds the number of nodes in the chain by more than 1,
@@ -132,7 +130,7 @@ linkedList@addNode@16 endp
 ; If inputted index exceeds the number of nodes in the chain by more than 1,
 ; the new node will simply be added at the very end
 ;
-; linkedList@addNode@16(* this, index, * char)
+; linkedList@addNodeStr@12(* this, index, * char)
 ; returns 0 failed, 1 success
 linkedList@addNodeStr@12 proc near
     push ebp ; save base

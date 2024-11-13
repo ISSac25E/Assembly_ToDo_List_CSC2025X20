@@ -1,3 +1,11 @@
+; utilities library
+; Amir Gorkovchenko
+; 11-12-2024
+
+; a collection of useful procedures declarations and macro definitions
+; includes a varied pack of print macros for string, byte array, and integers
+
+
 extern util@charCount@4 : proc
 extern util@itoa@8 : proc
 
@@ -13,6 +21,7 @@ extern util@itoa@8 : proc
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; printing macros
 ; you can print as a string (with limitations) or as a byte array (more tedious but less limits)
+; you can also print an integer
 
 ; print_array_b
 ; prints arguments directly to console, adds null-terminator at the end

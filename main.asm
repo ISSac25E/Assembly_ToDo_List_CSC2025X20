@@ -55,7 +55,6 @@ print_linkedList@4 endp
 
 
 
-
 main PROC near
 rtc_esp_fail
 
@@ -64,6 +63,7 @@ rtc_esp_fail
 rtc_esp_start
     call initialize_console@0
 
+    ; test prints using utility tools:
     println_str "Hello World"
     print_str "printing a number: "
     print_int -1234

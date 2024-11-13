@@ -8,9 +8,8 @@
 extern _ExitProcess@4: proc
 
 include linkedList.inc
-include utility.inc
 include readWrite.inc
-
+include utility.inc
 
 ; for stack checking:
 include rtc_esp.inc
@@ -45,21 +44,13 @@ funct@8 endp
 ; take a linked-list object and print content
 ; print_linkedList@4(*linkedList)
 print_linkedList@4 proc near
-rtc_esp_fail
+    ; get base pointer
     push ebp
     mov ebp, esp
 
-    mov ecx, esp
-rtc_esp_start
-    push_array_b  'L', 'i', 'n', 'k', 'e', 'd', 'L', 'i', 's', 't', ':', 10, 0
-    pop_array_b  'L', 'i', 'n', 'k', 'e', 'd', 'L', 'i', 's', 't', ':', 10
-rtc_esp_end
-
-
-
 _exit:
     pop ebp
-    ret 8 
+    ret 4
 print_linkedList@4 endp
 
 
@@ -67,10 +58,19 @@ print_linkedList@4 endp
 
 main PROC near
 rtc_esp_fail
+
+
+
 rtc_esp_start
-    push esp
-    call print_linkedList@4
+    call initialize_console@0
+
+    println_str "Hello World"
+    print_str "printing a number: "
+    print_int -1234
+    println_str
 rtc_esp_end
+
+
 	push	0
 	call	_ExitProcess@4
 

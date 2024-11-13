@@ -34,7 +34,7 @@ util@charCount@4 proc near
     mov ecx, [ebp + 8]
 
 _char_count_loop_start:
-    cmp dword ptr [ecx + eax], 0
+    cmp byte ptr [ecx + eax], 0
     je _exit
 
     inc eax

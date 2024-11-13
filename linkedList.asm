@@ -95,7 +95,7 @@ linkedList@addNode@16 proc near
 
 _search_node_start:
     cmp ecx, [ebp + 8 + (4 * 1)] ; compare with node index
-    jge _search_node_end
+    jae _search_node_end
     cmp dword ptr [edx], 0 ; check pointer of this->nextNode
     je _search_node_end 
 
@@ -141,10 +141,10 @@ linkedList@addNodeStr@12 proc near
     inc eax ; include null terminator
 
     ; linkedList@addNode@16(* this, index, * data, dataLength)
-    push [ebp + 8 + (4 * 0)]
-    push [ebp + 8 + (4 * 1)]
-    push [ebp + 8 + (4 * 2)]
     push eax
+    push [ebp + 8 + (4 * 2)]
+    push [ebp + 8 + (4 * 1)]
+    push [ebp + 8 + (4 * 0)]
     call linkedList@addNode@16
 
 _exit:
@@ -167,7 +167,7 @@ linkedList@deleteNode@8 proc near
 
 _search_node_start:
     cmp ecx, [ebp + 8 + (4 * 1)] ; compare with node index
-    jge _search_node_end
+    jae _search_node_end
     cmp dword ptr [edx], 0 ; check pointer of this->nextNode
     je _search_node_end 
 
@@ -226,7 +226,7 @@ linkedList@getNodeData@8 proc near
 
 _search_node_start:
     cmp ecx, [ebp + 8 + (4 * 1)] ; compare with node index
-    jge _search_node_end
+    jae _search_node_end
     cmp dword ptr [edx], 0 ; check pointer of this->nextNode
     je _search_node_end 
 
@@ -268,7 +268,7 @@ linkedList@getNodeSize@8 proc near
 
 _search_node_start:
     cmp ecx, [ebp + 8 + (4 * 1)] ; compare with node index
-    jge _search_node_end
+    jae _search_node_end
     cmp dword ptr [edx], 0 ; check pointer of this->nextNode
     je _search_node_end 
 

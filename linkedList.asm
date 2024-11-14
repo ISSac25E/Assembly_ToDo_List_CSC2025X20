@@ -31,6 +31,7 @@ extern _HeapFree@12 : proc
 
 extern _RtlMoveMemory@12 : proc
 
+include readWrite.inc
 include utility.inc
 include rtc_esp.inc
 
@@ -317,4 +318,120 @@ _exit:
     pop ebp
     ret 4
 linkedList@nodeCount@4 endp
+
+; take a linked-list object and print content
+; print_linkedList@4(*this)
+; return void
+linkedList@print_linkedList@4 proc near
+    ; get base pointer
+    push ebp
+    mov ebp, esp
+    
+    print_str "Linked List ("
+    ; linkedList@nodeCount@4(* this)
+    ; returns >=0 number of nodes on linked list
+    push [ebp + 8] ; push instance pointer to ll
+    call linkedList@nodeCount@4
+    push eax    ; store node count
+    print_int eax
+    
+    println_str "):"
+
+    push ebx
+    mov ebx, 0
+
+_start_loop:
+    cmp ebx, [ebp - 4] ; compare with number of nodes in list
+    jge _end_loop
+
+    print_str "node "
+    print_int ebx
+    print_str " ("
+
+    ; linkedList@getNodeSize@8(* this, index)
+    ; returns node data byte count.
+    push ebx ; node index
+    push [ebp + 8] ; push instance pointer to ll
+    call linkedList@getNodeSize@8
+
+    push eax ; store size
+    sub esp, 4 ; allocate slot for data pointer
+    push eax ; store size for another operation
+    print_int eax   ; node size in bytes
+    print_str "-bytes): "
+    
+    ;;;;; print node data as string:
+    ; linkedList@getNodeData@8(* this, index)
+    ; returns pointer to node data. null if node doesn't exist
+    push ebx ; push current index
+    push [ebp + 8] ; push instance pointer to ll
+    call linkedList@getNodeData@8
+    
+    cmp eax, 0
+    je _null_node
+    
+    mov [ebp - 16], eax ; for data printing loop
+    push eax ; for string write
+    
+    print_array_b 022h ; quote mark
+    ; we don't actually know if this data is a valid string so using writeLine
+    ; writeLine@8(* data, dataLength) ; both already pushed
+    ; returns void
+    call writeLine@8  ; both *data and dataLength are on stack
+    print_array_b 022h ; quote mark
+    print_str " {"
+
+    ; loop preparation:
+    mov ecx, 0 ; loop counter
+    _print_arr_loop_start:
+        cmp ecx, [ebp - 12] ; compare with saved dataLength
+        jae _print_arr_loop_end
+        push ecx ; save counter
+
+
+        mov eax, [ebp - 16] ; get data pointer
+        mov eax, [eax + ecx]
+        and eax, 0FFh       ; Keep only the lower 8 bits, clear upper 24 bits
+        print_int eax
+
+
+        pop ecx ; restore counter
+        inc ecx
+
+        cmp ecx, [ebp - 12]
+        jb _print_comma
+        jmp _print_arr_loop_start
+
+            _print_comma:
+                push ecx
+                print_str ", "
+                pop ecx
+                jmp  _print_arr_loop_start
+        
+    _print_arr_loop_end:
+
+    add esp, 8   ; pop data size and data pointer
+    
+    println_str "}"
+
+    inc ebx
+    jmp _start_loop
+
+_null_node:
+    add esp, 12 ; pop both node sizes and data pointer
+    println_str "null"
+    inc ebx
+    jmp _start_loop
+
+_end_loop:
+    pop ebx
+    add esp, 4 ; pop eax
+    jmp _exit
+
+_exit:
+    println_str
+    pop ebp
+    ret 4
+linkedList@print_linkedList@4 endp
+
 end

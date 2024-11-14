@@ -55,80 +55,6 @@ _exit:
     ret 8 
 funct@8 endp
 
-; take a linked-list object and print content
-; print_linkedList@4(*linkedList)
-print_linkedList@4 proc near
-    ; get base pointer
-    push ebp
-    mov ebp, esp
-    
-    print_str "Linked List ("
-    ; linkedList@nodeCount@4(* this)
-    ; returns >=0 number of nodes on linked list
-    push [ebp + 8] ; push instance pointer to ll
-    call linkedList@nodeCount@4
-    print_int eax
-    push eax    ; store node count
-    println_str "):"
-
-    push ebx
-    mov ebx, 0
-
-_start_loop:
-    cmp ebx, [ebp - 4] ; compare with number of nodes in list
-    jge _end_loop
-
-    print_str "node "
-    print_int ebx
-    print_str " ("
-
-    ; linkedList@getNodeSize@8(* this, index)
-    ; returns node data byte count.
-    push ebx
-    push [ebp + 8] ; push instance pointer to ll
-    call linkedList@getNodeSize@8
-
-    print_int eax   ; node size in bytes
-    print_str "-bytes): "
-    
-    ;;;;; print node data as string:
-    ; linkedList@getNodeData@8(* this, index)
-    ; returns pointer to node data. null if node doesn't exist
-    push ebx ; push current index
-    push [ebp + 8] ; push instance pointer to ll
-    call linkedList@getNodeData@8
-
-    cmp eax, 0
-    je _null_node
-
-    
-    push eax ; to write later
-    
-    print_array_b 022h ; quote mark
-    call writeString@4  ; eax already pushed on stack
-    print_array_b 022h ; quote mark
-
-    println_str
-
-    inc ebx
-    jmp _start_loop
-
-_null_node:
-    println_str "null"
-    inc ebx
-    jmp _start_loop
-
-_end_loop:
-    pop ebx
-    add esp, 4 ; pop eax
-    jmp _exit
-
-_exit:
-    println_str
-    pop ebp
-    ret 4
-print_linkedList@4 endp
-
 
 main PROC near
 rtc_esp_fail
@@ -156,11 +82,14 @@ rtc_esp_start
     push offset linkedList_obj
     call linkedList@addNodeStr@12
 
+    addNode_array_b offset linkedList_obj, 0, 5,2,0,1,2,4,6
+
+
 
     call initialize_console@0
 
     push offset linkedList_obj  ; push linked list instance pointer
-    call print_linkedList@4
+    call linkedList@print_linkedList@4
 
     ; linkedList@deleteNode@8(* this, index)
     ; returns void
@@ -169,7 +98,7 @@ rtc_esp_start
     call linkedList@deleteNode@8
 
     push offset linkedList_obj  ; push linked list instance pointer
-    call print_linkedList@4
+    call linkedList@print_linkedList@4
 
 rtc_esp_end
 	push 0

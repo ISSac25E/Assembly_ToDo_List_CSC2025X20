@@ -92,22 +92,25 @@ load_array_b macro buffer, args:vararg
 endm
 
 push_array_b macro args:vararg 
+    arg_size = 0
     FOR arg, <args>
-        dec esp ; allocate one byte
+        arg_size = arg_size + 1
     endm
+    sub esp, arg_size
+
+    arg_size = 0
     FOR arg, <args>
-        mov [esp], byte ptr arg
-        inc esp ; de-allocate one byte
-    endm
-    FOR arg, <args>
-        dec esp ; allocate one byte
+        mov [esp + arg_size], byte ptr arg
+        arg_size = arg_size + 1
     endm
 endm
 
 pop_array_b macro args:VARARG 
+    arg_size = 0
     FOR arg, <args>
-        inc esp ; de-allocate one byte
+        arg_size = arg_size + 1
     endm
+    add esp, arg_size
 endm
 
 push_str macro str:req
@@ -117,15 +120,15 @@ push_str macro str:req
     strSize = 0
     forc c, <str>
         ifdif <c>,<!">
-            dec esp
+            strSize = strSize + 1
         endif
     endm
+    sub esp, strSize 
     
     forc c, <str>
         ifdif <c>,<!">
             mov byte ptr [esp], '&c&'
             inc esp
-            strSize = strSize + 1
         endif
     endm
 
@@ -133,13 +136,14 @@ push_str macro str:req
 endm
 
 pop_str macro str
+    strSize = 0
     forc c, <str>
         ifdif <c>,<!">
-            inc esp
+            strSize = strSize + 1
         endif
     endm
-
-    inc esp ; null-char
+    strSize = strSize + 1  ; null-char
+    add esp, strSize
 endm
 
 push_str_ln macro str:=<"">
@@ -151,15 +155,15 @@ push_str_ln macro str:=<"">
     strSize = 0
     forc c, <str>
         ifdif <c>,<!">
-            dec esp
+            strSize = strSize + 1
         endif
     endm
+    sub esp, strSize 
     
     forc c, <str>
         ifdif <c>,<!">
             mov byte ptr [esp], '&c&'
             inc esp
-            strSize = strSize + 1
         endif
     endm
 
@@ -167,12 +171,12 @@ push_str_ln macro str:=<"">
 endm
 
 pop_str_ln macro str:=<"">
+    strSize = 0
     forc c, <str>
         ifdif <c>,<!">
-            inc esp
+            strSize = strSize + 1
         endif
     endm
-
-    inc esp ; null-char
-    inc esp ; line-feed-char
+    strSize = strSize + 2  ; null-char and line-feed
+    add esp, strSize
 endm

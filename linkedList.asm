@@ -319,6 +319,38 @@ _exit:
     ret 4
 linkedList@nodeCount@4 endp
 
+; de-constructor function
+; will erase all nodes from linked list
+; linkedList@deInit@4(* this)
+; returns void
+linkedList@deInit@4 proc
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+_node_loop:
+    ; linkedList@nodeCount@4(* this)
+    ; returns >=0 number of nodes on linked list
+    push [ebp + 8] ; get *this
+    call linkedList@nodeCount@4
+
+    cmp eax, 0 ; check if nodes are left
+    jbe _node_loop_end 
+
+    ; linkedList@deleteNode@8(* this, index)
+    ; returns void
+    push 0  ; delete bottom node
+    push [ebp + 8] ; get *this
+    call linkedList@deleteNode@8
+    jmp _node_loop
+
+_node_loop_end:
+    jmp _exit
+
+_exit:
+    pop ebp
+    ret 4
+linkedList@deInit@4 endp
+
 ; take a linked-list object and print content
 ; print_linkedList@4(*this)
 ; return void

@@ -22,6 +22,10 @@ extern linkedList@getNodeSize@8 : proc
 ; returns >=0 number of nodes on linked list
 extern linkedList@nodeCount@4 : proc
 
+; linkedList@deinit@4(* this)
+; returns void
+extern linkedList@deInit@4 : proc
+
 ; print_linkedList@4(*this)
 ; return void
 extern linkedList@print_linkedList@4 : proc

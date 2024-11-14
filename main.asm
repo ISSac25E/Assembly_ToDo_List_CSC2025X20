@@ -42,20 +42,6 @@ my_string byte "HellowWorld", 0
 .code
 
 
-; input two number, add and return
-funct@8 proc near
-    push ebp
-    mov ebp, esp
-
-    mov eax, [ebp + 4]
-    add eax, [ebp + 8]
-
-_exit:
-    pop ebp
-    ret 8 
-funct@8 endp
-
-
 main PROC near
 rtc_esp_fail
 rtc_esp_start
@@ -82,9 +68,8 @@ rtc_esp_start
     push offset linkedList_obj
     call linkedList@addNodeStr@12
 
+    ; add array:
     addNode_array_b offset linkedList_obj, 0, 5,2,0,1,2,4,6
-
-
 
     call initialize_console@0
 
@@ -96,6 +81,12 @@ rtc_esp_start
     push 1
     push offset linkedList_obj
     call linkedList@deleteNode@8
+
+    push offset linkedList_obj  ; push linked list instance pointer
+    call linkedList@print_linkedList@4
+
+    push offset linkedList_obj  ; push linked list instance pointer
+    call linkedList@deInit@4
 
     push offset linkedList_obj  ; push linked list instance pointer
     call linkedList@print_linkedList@4

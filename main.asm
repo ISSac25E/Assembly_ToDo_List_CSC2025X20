@@ -38,15 +38,29 @@ rtc_esp_end
 main ENDP
 
 print_instructions@0 proc near
-    ; Please enter a symbol (+, -, ? or !) followed with your To-Do list item
+    ; Please enter a command symbol (+, -, ? or !)
     ; <+> Add Chores
     ; <-> Delete Chores
     ; <?> View List
-    ; <!> End Program
+    ; <!> Save and Exit
 
-    print_str "Please enter a symbol (+, -, ? or "
+    print_str "Please enter a command symbol (+, -, ? or "
     print_array_b 21h ; '!'
-    println_str ") followed with your To-Do list item"
+    println_str ")"
+
+    print_array_b '<', '+', '>'
+    println_str " Add Chores"
+
+    print_array_b '<', '-', '>'
+    println_str " Delete Chores"
+    
+    print_array_b '<', '?', '>'
+    println_str " View List"
+
+    print_array_b '<', 21h, '>'
+    println_str " Save and Exit"
+
+    println_str
     
     ret
 print_instructions@0 endp

@@ -29,10 +29,12 @@
 .model flat
 
 ; Library calls used for input from and output to the console
-extern  _GetStdHandle@4:near
-extern  _WriteConsoleA@20:near
-extern  _ReadConsoleA@20:near
-extern  _ExitProcess@4: near
+extern _GetStdHandle@4 : near
+extern _GetConsoleMode@8 : near
+extern _SetConsoleMode@8 : near
+extern _WriteConsoleA@20 : near
+extern _ReadConsoleA@20 : near
+extern _ExitProcess@4 :  near
 
 include utility.inc
 
@@ -56,7 +58,7 @@ numCharsRead  dword 1024
 .code
 ;; Call initialize_console@0() - No Parameters, no return value
 ;; Initialize Input and Output handles so you only have to do that once.
-; initialize_console@0 ()
+; initialize_console@0()
 ; returns void
 initialize_console@0 PROC near
     ; https://learn.microsoft.com/en-us/windows/console/getstdhandle
@@ -143,6 +145,67 @@ _exit:
     pop ebp
     ret 4
 writeString@4 endp 
+
+; clears console and scroll back too
+; returns console mode back to normal
+; https://learn.microsoft.com/en-us/windows/console/clearing-the-screen
+; can get much more advanced here: https://en.wikipedia.org/wiki/ANSI_escape_code
+; clearConsole@0()
+; output: void
+clearConsole@0 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    sub esp, 4
+    push esp
+    push outputHandle
+    ; https://learn.microsoft.com/en-us/windows/console/getconsolemode
+    ; BOOL WINAPI GetConsoleMode(
+    ; _In_  HANDLE  hConsoleHandle,
+    ; _Out_ LPDWORD lpMode
+    ; );
+    call _GetConsoleMode@8
+
+    cmp eax, 0
+    je  _error
+
+    mov eax, [ebp - 4] ; get current console mode
+    or eax, 04h ; ENABLE_VIRTUAL_TERMINAL_PROCESSING ; https://learn.microsoft.com/en-us/windows/console/setconsolemode
+
+    ; https://learn.microsoft.com/en-us/windows/console/setconsolemode
+    ; BOOL WINAPI SetConsoleMode(
+    ; _In_ HANDLE hConsoleHandle,
+    ; _In_ DWORD  dwMode
+    ; );
+    push eax
+    push outputHandle
+    call _SetConsoleMode@8
+
+    cmp eax, 0
+    je _error
+    
+    ; print "\x1b[2J", clear viewable screen
+    ; print "\x1b[3J", clear scroll back
+    ; "\x1b" is an escape char = 1bh
+    print_array_b 1bh, '[', '2', 'J'
+    print_array_b 1bh, '[', '3', 'J'
+
+
+    ; restore the mode on the way out to be nice to other command-line applications
+    ; pop eax   ; no need to pop and push
+    ; push eax
+    push outputHandle
+    call _SetConsoleMode@8
+
+    jmp _exit
+
+_error:
+
+_exit:
+    mov esp, ebp ; because of the error handling, make sure no vars are forgotten
+    pop ebp
+    ret 4
+clearConsole@0 endp
 
 ; genNumber and writeNumber were removed for using callee saved registers without restoring
 END

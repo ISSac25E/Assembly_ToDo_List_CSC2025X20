@@ -30,6 +30,12 @@ extern linkedList@deInit@4 : proc
 ; return void
 extern linkedList@print_linkedList@4 : proc
 
+extern linkedList@load@8 : proc
+
+; linkedList@store@8(*this, *char)
+; returns: 0 failed, 1 success
+extern linkedList@store@8 : proc
+
 
 ; macros dependency
 ; - include utility.inc

@@ -31,6 +31,11 @@ extern _HeapFree@12 : proc
 
 extern _RtlMoveMemory@12 : proc
 
+extern _CreateFileA@28 : near
+extern _WriteFile@20 : near
+extern _ReadFile@20 : near
+extern _CloseHandle@4 : near
+
 include readWrite.inc
 include utility.inc
 include rtc_esp.inc
@@ -255,10 +260,10 @@ linkedList@getNodeData@8 endp
 
 ; get node size (data bytes)
 ;
-; linkedList@getNodeSize@8(* this, index)
-; returns node data byte count.
 ; if the node doesn't exist, 0 will be returned as default. however, a node can be 0 bytes long.
 ; Check 'getNodeData' to see if node exists
+; linkedList@getNodeSize@8(* this, index)
+; returns node data byte count.
 linkedList@getNodeSize@8 proc near
     push ebp ; save base
     mov ebp, esp ; get stack pointer
@@ -465,5 +470,120 @@ _exit:
     pop ebp
     ret 4
 linkedList@print_linkedList@4 endp
+
+
+linkedList@load@8 proc near
+linkedList@load@8 endp
+
+; stores a linkedList object to a file in binary format
+; take file-name string
+; linkedList@store@8(*this, *char)
+; returns: 0 failed, 1 success
+linkedList@store@8 proc near
+    ; get base pointer
+    push ebp
+    mov ebp, esp
+
+    ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+    ; HANDLE CreateFileA(
+    ;   [in]           LPCSTR                lpFileName,
+    ;   [in]           DWORD                 dwDesiredAccess,
+    ;   [in]           DWORD                 dwShareMode,
+    ;   [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    ;   [in]           DWORD                 dwCreationDisposition,
+    ;   [in]           DWORD                 dwFlagsAndAttributes,
+    ;   [in, optional] HANDLE                hTemplateFile
+    ; );
+    push 0 ; handle
+    push 80h ; FILE_ATTRIBUTE_NORMAL
+    push 2 ; CREATE_ALWAYS (will create new one always)
+    push 0 ; default security
+    push 0 ; no sharing
+    push 040000000h ; access (GENERIC_WRITE) https://learn.microsoft.com/en-us/windows/win32/secauthz/generic-access-rights
+    push [ebp + 8 + (1 * 4)] ; file name
+    call _CreateFileA@28
+
+    push eax ; save file handler [ebp - 4]
+
+    cmp dword ptr [ebp - 4], 0 ; must be valid, otherwise, file couldn't be made
+    je _create_file_error
+
+    push [ebp + 8 + (0 * 4)] ; this pointer
+    call linkedList@nodeCount@4
+
+    push eax ; save NodeCount [ebp - 8]
+    ; cmp eax, 0 ; empty ll will mean empty file. simple
+    ; jbe _empty_ll
+
+    mov ecx, 0 ; counter var
+    _start_loop:
+        cmp ecx, [ebp - 8] ; compare with node count
+        jae _end_loop
+        push ecx ; save index [ebp - 12]
+
+        ; linkedList@getNodeData@8(* this, index)
+        ; returns pointer to node data. null if node doesn't exist
+        push [ebp - 12] ; node index
+        push [ebp + 8 + (0 * 4)] ; this pointer
+        call linkedList@getNodeData@8
+
+        cmp eax, 0  ; null data not allowed
+        je _ll_error
+
+        sub eax, 4 ; include number of bytes as well
+        mov edx, [eax] ; get byte data
+        add edx, 4 ; include nodeSize
+
+        ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
+        ; BOOL WriteFile(
+        ;   [in]                HANDLE       hFile,
+        ;   [in]                LPCVOID      lpBuffer,
+        ;   [in]                DWORD        nNumberOfBytesToWrite,
+        ;   [out, optional]     LPDWORD      lpNumberOfBytesWritten,
+        ;   [in, out, optional] LPOVERLAPPED lpOverlapped
+        ; );
+        push 0
+        push 0 ; number of bytes written. not needed
+        push edx ; 4 bytes for the node size 
+        push eax ; address of node size
+        push [ebp - 4]
+        call _WriteFile@20
+
+        cmp eax, 0
+        je _file_write_error
+
+        pop ecx
+        inc ecx
+        jmp _start_loop
+
+    _end_loop:
+
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 1
+    jmp _exit
+
+
+; _empty_ll: ; dont store 00 int at start of file. indicates single empty node
+
+_file_write_error:
+
+_ll_error:
+    ; todo, close file, maybe delete?
+    ; https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
+    ; BOOL CloseHandle(
+    ;   [in] HANDLE hObject
+    ; );
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+
+_create_file_error:
+    mov eax, 0 ; ret val
+
+_exit:
+    mov esp, ebp ; reset variables
+    pop ebp
+    ret 4
+linkedList@store@8 endp
 
 end

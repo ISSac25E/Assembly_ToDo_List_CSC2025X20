@@ -2,6 +2,10 @@
 ; returns 0 failed, 1 success
 extern linkedList@addNode@16 : proc
 
+; linkedList@addNode_empty@12(* this, index, nodeSize)
+; returns 0 failed, 1 success
+extern linkedList@addNode_empty@12 : proc
+
 ; linkedList@addNodeStr@12(* this, index, * char)
 ; returns 0 failed, 1 success
 extern linkedList@addNodeStr@12 : proc
@@ -29,6 +33,14 @@ extern linkedList@deInit@4 : proc
 ; print_linkedList@4(*this)
 ; return void
 extern linkedList@print_linkedList@4 : proc
+
+; linkedList@store@8(*this, *char)
+; returns: error code
+extern linkedList@load@8 : proc
+
+; linkedList@store@8(*this, *char)
+; returns: 0 failed, 1 success
+extern linkedList@store@8 : proc
 
 
 ; macros dependency

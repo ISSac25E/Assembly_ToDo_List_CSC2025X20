@@ -53,7 +53,7 @@ linkedList@addNode@16 proc near
     push ebp ; save base
     mov ebp, esp ; get stack pointer
 
-    cmp dword ptr [ebp + 20], 0 ; check data length, must be more than zero
+    ; cmp dword ptr [ebp + 20], 0 ; check data length, must be more than zero
     ; jl _failed  ; zero is allowed. just an empty node though. accepting unsigned int
 
 ; allocate memory:
@@ -130,6 +130,95 @@ _exit:
     pop ebp
     ret 16 
 linkedList@addNode@16 endp
+
+
+; add an uninitialized node in the linked list at specified index
+; If inputted index exceeds the number of nodes in the chain by more than 1,
+; the new node will simply be added at the very end
+;
+; linkedList@addNode_empty@12(* this, index, nodeSize)
+; returns 0 failed, 1 success
+linkedList@addNode_empty@12 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    ; cmp dword ptr [ebp + 8 + (4 * 2)], 0 ; check data length, must be more than zero
+    ; jl _failed  ; zero is allowed. just an empty node though. accepting unsigned int
+
+; allocate memory:
+    ; https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-getprocessheap
+    ; HANDLE GetProcessHeap();
+    call _GetProcessHeap@0
+
+    ; https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc
+    ; DECLSPEC_ALLOCATOR LPVOID HeapAlloc(
+    ;   [in] HANDLE hHeap,
+    ;   [in] DWORD  dwFlags,
+    ;   [in] SIZE_T dwBytes
+    ; );
+    push [ebp + 8 + (4 * 2)] ; push number of bytes to allocate
+    add dword ptr [esp], 8  ; extra space needed for next node and node size
+    push 0 ; no flags. no thrown exceptions. only null return on fail
+    push eax ; push handle
+    call _HeapAlloc@12
+
+    cmp eax, 0
+    je _failed ; null returned, allocation failed
+
+    push eax ; save allocated memory address
+    mov edx, [ebp + 8 + (4 * 2)] ; move data length into edx
+    mov dword ptr [eax + 4], edx  ; save data length
+    mov dword ptr [eax], 0  ; clear next node pointer
+
+; ; copy contents into allocated memory:
+;     ; https://learn.microsoft.com/en-us/windows/win32/devnotes/rtlmovememory
+;     ; VOID RtlMoveMemory(
+;     ;   _Out_       VOID UNALIGNED *Destination,
+;     ;   _In_  const VOID UNALIGNED *Source,
+;     ;   _In_        SIZE_T         Length
+;     ; );
+;     push [ebp + 8 + (4 * 3)] ; fourth param, data length
+;     push [ebp + 8 + (4 * 2)] ; third param, *data
+;     push eax ; allocated memory ptr
+;     add dword ptr [esp], 8 ; offset: [next_node_ptr(4-bytes)][node_length(4-bytes)][node_data(node_length-bytes)]
+;     call _RtlMoveMemory@12
+
+    mov ecx, 0 ; set counter register
+
+    ; lea edx, [ebp + 8 + (4 * 0)] ; moves the address of this pointer
+    mov edx, [ebp + 8 + (4 * 0)] ; moves this pointer
+
+_search_node_start:
+    cmp ecx, [ebp + 8 + (4 * 1)] ; compare with node index
+    jae _search_node_end
+    cmp dword ptr [edx], 0 ; check pointer of this->nextNode
+    je _search_node_end 
+
+    mov edx, [edx] ; get next node pointer and check again
+    inc ecx
+
+    jmp _search_node_start
+
+
+_search_node_end:
+    ; edx holds target base-node
+    pop eax ; retrieve allocated memory address
+
+    ; relink linked-list:
+    mov ecx, [edx]
+    mov dword ptr [eax], ecx ; store next-node into new node
+    mov [edx], eax ; store new-node address into previous node
+    mov eax, 1 ; set return value to success
+    jmp _exit
+
+_failed:
+    mov eax, 0
+    jmp _exit
+
+_exit:
+    pop ebp
+    ret 12 
+linkedList@addNode_empty@12 endp
 
 ; add a node with null-terminated string in the linked list at specified index
 ; simplifies the process of storing string
@@ -395,7 +484,7 @@ _start_loop:
     sub esp, 4 ; allocate slot for data pointer
     push eax ; store size for another operation
     print_int eax   ; node size in bytes
-    print_str "-bytes): "
+    print_str " bytes): "
     
     ;;;;; print node data as string:
     ; linkedList@getNodeData@8(* this, index)
@@ -523,7 +612,6 @@ linkedList@load@8 proc near
     _start_loop:
         ; [ebp - 12]: bytes read (in file)
         ; [ebp - 16]: read buffer (node size)
-        ; [ebp - 16 - [ebp - 16]]: read buffer (node data)
         sub esp, 8
 
         lea eax, [ebp - 16] ; read buffer
@@ -553,8 +641,24 @@ linkedList@load@8 proc near
         cmp dword ptr [ebp - 12], 4 ; otherwise, must be exactly 4 bytes
         jne _corrupted_file_error
 
-        sub esp, [ebp - 16] ; allocate buffer for node data
-        mov eax, esp ; get buffer bottom address
+
+        ; linkedList@addNode_empty@12(* this, index, nodeSize)
+        ; returns 0 failed, 1 success
+        push [ebp - 16]
+        push [ebp - 8]  ; index
+        push [ebp + 8 + (0 * 4)] ; this pointer
+        call linkedList@addNode_empty@12
+
+        cmp eax, 0
+        je _ll_error
+
+        push [ebp - 8]  ; index
+        push [ebp + 8 + (0 * 4)] ; this pointer
+        call linkedList@getNodeData@8
+
+        cmp eax, 0
+        je _ll_error
+
         lea ecx, [ebp - 12] ; bytes read var
 
         ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfile
@@ -578,28 +682,11 @@ linkedList@load@8 proc near
         mov ecx, [ebp - 12] ; bytes read
         cmp ecx, [ebp - 16] ; must read exactly what is expected, otherwise, file too short
         jne _corrupted_file_error
-
-
-        lea eax, [ebp - 16]
-        sub eax, [ebp - 16]
-        ;;;; load linked list node
-        ; linkedList@addNode@16(* this, index, * data, dataLength)
-        ; returns 0 failed, 1 success
-        ; extern linkedList@addNode@16 : proc
-        push [ebp - 16]
-        push eax
-        push [ebp - 8]
-        push [ebp + 8 + (0 * 4)] ; this pointer
-        call linkedList@addNode@16
-
-        cmp eax, 0
-        je _ll_error
         
         inc dword ptr [ebp - 8]
 
         ; reset loop stack:
         add esp, 8
-        add esp, [ebp - 16]
         jmp _start_loop
 
     _end_loop:
@@ -642,9 +729,9 @@ linkedList@load@8 endp
 ; linkedList@store@8(*this, *char)
 ; returns: error code
 ;   0 = no error
-;   1 = file create error
-;   2 = ll error
-;   3 = file write error
+;   5 = file create error
+;   4 = ll error
+;   6 = file write error
 linkedList@store@8 proc near
     ; get base pointer
     push ebp
@@ -745,18 +832,18 @@ _file_write_error:
     ; );
     push [ebp - 4] ; file handler
     call _CloseHandle@4
-    mov eax, 3 ; file write error
+    mov eax, 6 ; file write error
     jmp _exit
     
 _ll_error:
     ; todo, close file, maybe delete?
     push [ebp - 4] ; file handler
     call _CloseHandle@4
-    mov eax, 2 ; ll error
+    mov eax, 4 ; ll error
     jmp _exit
 
 _create_file_error:
-    mov eax, 1 ; file error
+    mov eax, 5 ; file error
     jmp _exit
 
 _success:

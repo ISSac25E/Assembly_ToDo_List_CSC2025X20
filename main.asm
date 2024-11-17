@@ -30,6 +30,7 @@ my_string byte "HellowWorld", 0
 
 fileName byte "llist.bin", 0
 fileName_2 byte "llist_2.bin", 0
+fileName_3 byte "llist_3.bin", 0
 
 .code
 main PROC near
@@ -51,7 +52,7 @@ rtc_esp_fail
     ; linkedList@store@8(*this, *char)
     ; returns: error code
 rtc_esp_start
-    push offset fileName
+    push offset fileName_3
     push offset linkedList_obj
     call linkedList@load@8
 rtc_esp_end
@@ -66,62 +67,34 @@ rtc_esp_end
     call linkedList@print_linkedList@4
 
     println_str
-
-
-    ; linkedList@store@8(*this, *char)
-    ; returns: error code
-rtc_esp_start
-    push offset fileName_2
-    push offset linkedList_obj
-    call linkedList@load@8
-rtc_esp_end
-
-    push eax
-    print_str "load error code: "
-    pop eax
-    print_int eax
-    println_str
-
-    push offset linkedList_obj  ; push linked list instance pointer
-    call linkedList@print_linkedList@4
 
     
     ret
 load_ll endp
 
 store_ll proc near
-    ; linkedList@addNodeStr@12(* this, index, * char)
-    ; returns 0 failed, 1 success
-    push offset ll_data_0
-    push 0
-    push offset linkedList_obj
-    call linkedList@addNodeStr@12
-
-    ; linkedList@addNodeStr@12(* this, index, * char)
-    ; returns 0 failed, 1 success
-    push offset ll_data_1
-    push 0
-    push offset linkedList_obj
-    call linkedList@addNodeStr@12
-
-    ; linkedList@addNodeStr@12(* this, index, * char)
-    ; returns 0 failed, 1 success
-    push offset ll_data_5
-    push 0
-    push offset linkedList_obj
-    call linkedList@addNodeStr@12
-
-    ; add array:
-    addNode_array_b offset linkedList_obj, 0, 5,2,0,1,2,4,6
+    push ebx
+    push 0 ; start data value
 
     call initialize_console@0
+    mov ebx, 0
+    _loop_start:
+        cmp ebx, 2000
+        jae _loop_end
 
-    push offset linkedList_obj  ; push linked list instance pointer
-    call linkedList@print_linkedList@4
+        mov eax, [esp] ; data value
+        inc dword ptr [esp]
+        addNode_array_b offset linkedList_obj, 0, al, al, al, bl, al 
+
+        inc ebx
+        jmp _loop_start
+    _loop_end:
+    pop eax
+    pop ebx
 
     ; linkedList@store@8(*this, *char)
-    ; returns: 0 failed, 1 success
-    push offset fileName
+    ; returns: error code
+    push offset fileName_3
     push offset linkedList_obj
     call linkedList@store@8
     ret

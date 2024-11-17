@@ -763,7 +763,7 @@ _success:
     ; close file
     push [ebp - 4] ; file handler
     call _CloseHandle@4
-    mov eax, 1
+    mov eax, 0
     jmp _exit
 
 _exit:

@@ -2,6 +2,10 @@
 ; returns 0 failed, 1 success
 extern linkedList@addNode@16 : proc
 
+; linkedList@addNode_empty@12(* this, index, nodeSize)
+; returns 0 failed, 1 success
+extern linkedList@addNode_empty@12 : proc
+
 ; linkedList@addNodeStr@12(* this, index, * char)
 ; returns 0 failed, 1 success
 extern linkedList@addNodeStr@12 : proc

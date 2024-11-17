@@ -2,6 +2,9 @@
 ; Amir Gorkovchenko
 ; 11-14-2024
 
+Comment @
+this is a block comment!
+@
 .386P
 .model flat
 
@@ -30,12 +33,63 @@ fileName_2 byte "llist_2.bin", 0
 
 .code
 main PROC near
-_main:
 rtc_esp_fail
 rtc_esp_start
 
+call load_ll
+
+rtc_esp_end
+	push	0
+	call	_ExitProcess@4
+
+main ENDP
+
+load_ll proc near
+rtc_esp_fail
+    call initialize_console@0
+
+    ; linkedList@store@8(*this, *char)
+    ; returns: error code
+rtc_esp_start
+    push offset fileName
+    push offset linkedList_obj
+    call linkedList@load@8
+rtc_esp_end
+
+    push eax
+    print_str "load error code: "
+    pop eax
+    print_int eax
+    println_str
+    
+    push offset linkedList_obj  ; push linked list instance pointer
+    call linkedList@print_linkedList@4
+
+    println_str
 
 
+    ; linkedList@store@8(*this, *char)
+    ; returns: error code
+rtc_esp_start
+    push offset fileName_2
+    push offset linkedList_obj
+    call linkedList@load@8
+rtc_esp_end
+
+    push eax
+    print_str "load error code: "
+    pop eax
+    print_int eax
+    println_str
+
+    push offset linkedList_obj  ; push linked list instance pointer
+    call linkedList@print_linkedList@4
+
+    
+    ret
+load_ll endp
+
+store_ll proc near
     ; linkedList@addNodeStr@12(* this, index, * char)
     ; returns 0 failed, 1 success
     push offset ll_data_0
@@ -70,31 +124,7 @@ rtc_esp_start
     push offset fileName
     push offset linkedList_obj
     call linkedList@store@8
+    ret
+store_ll endp
 
-    ; linkedList@deleteNode@8(* this, index)
-    ; returns void
-    push 1
-    push offset linkedList_obj
-    call linkedList@deleteNode@8
-
-    push offset linkedList_obj  ; push linked list instance pointer
-    call linkedList@print_linkedList@4
-
-    push offset linkedList_obj  ; push linked list instance pointer
-    call linkedList@deInit@4
-
-    push offset linkedList_obj  ; push linked list instance pointer
-    call linkedList@print_linkedList@4
-
-    ; linkedList@store@8(*this, *char)
-    ; returns: 0 failed, 1 success
-    push offset fileName_2
-    push offset linkedList_obj
-    call linkedList@store@8
-
-rtc_esp_end
-	push	0
-	call	_ExitProcess@4
-
-main ENDP
-END
+end

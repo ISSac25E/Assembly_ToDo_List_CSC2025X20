@@ -472,13 +472,179 @@ _exit:
 linkedList@print_linkedList@4 endp
 
 
+; loads a linked from a file
+; takes file-name string
+; linkedList@store@8(*this, *char)
+; returns: error code
+;   0 = no error
+;   1 = open file error
+;   2 = read file error
+;   3 = corrupted file error
+;   4 = linkedList error
 linkedList@load@8 proc near
+    ; get base pointer
+    push ebp
+    mov ebp, esp
+
+    ; list of funct variables:
+    ; [ebp - 4]: file handler
+    ; [ebp - 8]: node index
+    sub esp, 8
+
+    ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+    ; HANDLE CreateFileA(
+    ;   [in]           LPCSTR                lpFileName,
+    ;   [in]           DWORD                 dwDesiredAccess,
+    ;   [in]           DWORD                 dwShareMode,
+    ;   [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    ;   [in]           DWORD                 dwCreationDisposition,
+    ;   [in]           DWORD                 dwFlagsAndAttributes,
+    ;   [in, optional] HANDLE                hTemplateFile
+    ; );
+    push 0 ; handle
+    push 80h ; FILE_ATTRIBUTE_NORMAL
+    push 3 ; OPEN_EXISTING
+    push 0 ; default security
+    push 0 ; no sharing
+    push 080000000h ; access (GENERIC_READ) https://learn.microsoft.com/en-us/windows/win32/secauthz/generic-access-rights
+    push [ebp + 8 + (1 * 4)]
+    call _CreateFileA@28
+
+    mov [ebp - 4], eax ; save file handle
+
+    cmp dword ptr [ebp - 4], 0 ; must be valid, otherwise, file couldn't be made
+    je _open_file_error
+
+    ; reset ll before loading
+    push [ebp + 8 + (0 * 4)] ; this pointer
+    call linkedList@deInit@4
+
+    mov dword ptr [ebp - 8], 0  ; node index(loop counter)
+    _start_loop:
+        ; [ebp - 12]: bytes read (in file)
+        ; [ebp - 16]: read buffer (node size)
+        ; [ebp - 16 - [ebp - 16]]: read buffer (node data)
+        sub esp, 8
+
+        lea eax, [ebp - 16] ; read buffer
+        lea ecx, [ebp - 12] ; bytes read var
+
+        ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfile
+        ; BOOL ReadFile(
+        ;   [in]                HANDLE       hFile,
+        ;   [out]               LPVOID       lpBuffer,
+        ;   [in]                DWORD        nNumberOfBytesToRead,
+        ;   [out, optional]     LPDWORD      lpNumberOfBytesRead,
+        ;   [in, out, optional] LPOVERLAPPED lpOverlapped
+        ; );
+        push 0
+        push ecx
+        push 4 ; to get next node size
+        push eax
+        push [ebp - 4] ; file name  
+        call _ReadFile@20
+
+        cmp eax, 0
+        je _read_file_error
+
+        cmp dword ptr [ebp - 12], 0 ; no bytes read when attempting to retrieve node size means successful ll load
+        je _success
+
+        cmp dword ptr [ebp - 12], 4 ; otherwise, must be exactly 4 bytes
+        jne _corrupted_file_error
+
+        sub esp, [ebp - 16] ; allocate buffer for node data
+        mov eax, esp ; get buffer bottom address
+        lea ecx, [ebp - 12] ; bytes read var
+
+        ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfile
+        ; BOOL ReadFile(
+        ;   [in]                HANDLE       hFile,
+        ;   [out]               LPVOID       lpBuffer,
+        ;   [in]                DWORD        nNumberOfBytesToRead,
+        ;   [out, optional]     LPDWORD      lpNumberOfBytesRead,
+        ;   [in, out, optional] LPOVERLAPPED lpOverlapped
+        ; );
+        push 0
+        push ecx
+        push [ebp - 16] ; to get next node size
+        push eax
+        push [ebp - 4] ; file handle  
+        call _ReadFile@20
+
+        cmp eax, 0
+        je _read_file_error
+
+        mov ecx, [ebp - 12] ; bytes read
+        cmp ecx, [ebp - 16] ; must read exactly what is expected, otherwise, file too short
+        jne _corrupted_file_error
+
+
+        lea eax, [ebp - 16]
+        sub eax, [ebp - 16]
+        ;;;; load linked list node
+        ; linkedList@addNode@16(* this, index, * data, dataLength)
+        ; returns 0 failed, 1 success
+        ; extern linkedList@addNode@16 : proc
+        push [ebp - 16]
+        push eax
+        push [ebp - 8]
+        push [ebp + 8 + (0 * 4)] ; this pointer
+        call linkedList@addNode@16
+
+        cmp eax, 0
+        je _ll_error
+        
+        inc dword ptr [ebp - 8]
+
+        ; reset loop stack:
+        add esp, 8
+        add esp, [ebp - 16]
+        jmp _start_loop
+
+    _end_loop:
+
+_ll_error:
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 4 ; ll error
+    jmp _exit
+
+_corrupted_file_error:
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 3 ; corrupted file error
+    jmp _exit
+
+_read_file_error:
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 2 ; read file error
+    jmp _exit
+
+_open_file_error:
+    mov eax, 1 ; open file error
+    jmp _exit
+
+_success:
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 0
+    jmp _exit
+_exit:
+    mov esp, ebp ; reset variables
+    pop ebp
+    ret 8
 linkedList@load@8 endp
 
 ; stores a linkedList object to a file in binary format
-; take file-name string
+; takes file-name string
 ; linkedList@store@8(*this, *char)
-; returns: 0 failed, 1 success
+; returns: error code
+;   0 = no error
+;   1 = file create error
+;   2 = ll error
+;   3 = file write error
 linkedList@store@8 proc near
     ; get base pointer
     push ebp
@@ -533,6 +699,10 @@ linkedList@store@8 proc near
         sub eax, 4 ; include number of bytes as well
         mov edx, [eax] ; get byte data
         add edx, 4 ; include nodeSize
+        push edx ; [ebp - 16] push expected write
+
+        sub esp, 4 ; [ebp - 20]
+        lea ecx, [ebp - 20]
 
         ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefile
         ; BOOL WriteFile(
@@ -543,14 +713,19 @@ linkedList@store@8 proc near
         ;   [in, out, optional] LPOVERLAPPED lpOverlapped
         ; );
         push 0
-        push 0 ; number of bytes written. not needed
-        push edx ; 4 bytes for the node size 
-        push eax ; address of node size
+        push ecx ; number of bytes written. used to double check everything worked
+        push edx ; bytes to write
+        push eax ; address of node
         push [ebp - 4]
         call _WriteFile@20
 
         cmp eax, 0
         je _file_write_error
+
+        pop ecx ; get write result
+        pop eax ; get expected write result
+        cmp ecx, eax
+        jne _file_missed_write_error
 
         pop ecx
         inc ecx
@@ -558,17 +733,11 @@ linkedList@store@8 proc near
 
     _end_loop:
 
-    push [ebp - 4] ; file handler
-    call _CloseHandle@4
-    mov eax, 1
-    jmp _exit
+    jmp _success
 
-
-; _empty_ll: ; dont store 00 int at start of file. indicates single empty node
-
+_file_missed_write_error:
+    
 _file_write_error:
-
-_ll_error:
     ; todo, close file, maybe delete?
     ; https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     ; BOOL CloseHandle(
@@ -576,14 +745,31 @@ _ll_error:
     ; );
     push [ebp - 4] ; file handler
     call _CloseHandle@4
+    mov eax, 3 ; file write error
+    jmp _exit
+    
+_ll_error:
+    ; todo, close file, maybe delete?
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 2 ; ll error
+    jmp _exit
 
 _create_file_error:
-    mov eax, 0 ; ret val
+    mov eax, 1 ; file error
+    jmp _exit
+
+_success:
+    ; close file
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+    mov eax, 1
+    jmp _exit
 
 _exit:
-    mov esp, ebp ; reset variables
+    mov esp, ebp ; clear local variables
     pop ebp
-    ret 4
+    ret 8
 linkedList@store@8 endp
 
 end

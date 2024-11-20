@@ -204,7 +204,7 @@ _error:
 _exit:
     mov esp, ebp ; because of the error handling, make sure no vars are forgotten
     pop ebp
-    ret 4
+    ret
 clearConsole@0 endp
 
 ; genNumber and writeNumber were removed for using callee saved registers without restoring

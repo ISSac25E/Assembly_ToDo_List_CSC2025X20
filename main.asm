@@ -15,12 +15,19 @@ include linkedList.inc
 
 .data
 toDo_ll_obj dword 0
+toDo_list_file byte "list.todo.dat", 0
 
 .code
 main proc near
 rtc_esp_fail
 rtc_esp_start
     call initialize_console@0
+
+    ; linkedList@store@8(*this, *char)
+    ; returns: error code
+    push offset toDo_list_file
+    push offset toDo_ll_obj
+    call linkedList@store@8
 
     print_array_b 3ch, 3ch, 3ch ; "<<<"
     print_str " Command Line ToDo List "
@@ -29,6 +36,12 @@ rtc_esp_start
     println_str
 
     call print_instructions@0
+
+    ; loops forever until program exit called:
+    _prog_loop:
+
+        jmp _prog_loop
+    _end_prog_loop:
 
 
 rtc_esp_end

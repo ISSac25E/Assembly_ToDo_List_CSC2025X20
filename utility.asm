@@ -23,7 +23,7 @@
 .data
 .code
 
-; count number of chars in ansi string with null termination
+; count number of chars in ansi string
 ; util@charCount@4 (* char buffer)
 ; returns number of characters, null terminator not included
 util@charCount@4 proc near

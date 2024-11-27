@@ -8,6 +8,8 @@
 extern _ExitProcess@4: near
 
 include ../../string.inc
+include ../../utility.inc
+include ../../rtc_esp.inc
 
 .data
 .code

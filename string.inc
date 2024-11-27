@@ -10,10 +10,11 @@ extern string@length@4 : proc
 ; returns void
 extern string@set@8 : proc
 
-; string@util@alloc@4(alloc_size)
-; returns allocated address. null if failed
-extern string@util@alloc@4 : proc
+set_string macro this:req, str:=<"">
+    push_str &str&
+    push esp
+    push this
+    call string@set@8
 
-; string@util@free@4(address)
-; returns bool
-extern string@util@free@4 : proc
+    pop_str &str&
+endm

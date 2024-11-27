@@ -108,7 +108,7 @@ string@set@8 proc near
 _str_dealloc:
 
     push [ebp + 8 + 4] ; push new *char
-    call util@charCount@4 ; eax should be set
+    call util@charCount@4 ; eax set
     inc eax ; for null terminator
 
     push eax ; push twice for mem cpy and alloc
@@ -137,6 +137,63 @@ _exit:
     pop ebp
     ret 8
 string@set@8 endp
+
+; concatenate to string from another string. Source must be the address of the char array, NOT string class
+;
+; string@add@8(*this, *char)
+; returns void
+string@add@8 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    ; get new string length, must be non-zero:
+    push [ebp + 8 + 4]
+    call util@charCount@4
+    cmp eax, 0
+    je _exit ; no point adding empty string
+
+    push eax ; save new string length
+    
+    mov ecx, [ebp + 8] ; get this pointer
+    mov ecx, [ecx] ; get string pointer
+
+    cmp ecx, 0
+    je _string_uninitialized
+        
+        push ecx
+        call util@charCount@4
+
+        push eax ; store original string length
+
+    _string_uninitialized:
+
+
+    
+_exit:
+    mov esp, ebp ; reset stack
+    pop ebp
+    ret 8
+string@add@8 endp
+
+; insert a *char into string object at given index. 
+; if index is greater than current string length, will be added at the end.
+;
+; string@insert@12(*this, *char, index)
+; returns void
+string@insert@12 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+
+;;;;; calculate new total length
+
+
+
+_exit:
+    mov esp, ebp ; reset stack
+    pop ebp
+    ret 12
+string@insert@12 endp
 
 
 ; simplify memory allocation for string

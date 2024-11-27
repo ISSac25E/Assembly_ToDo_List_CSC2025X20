@@ -14,4 +14,18 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\string.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="..\..\utility.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="main.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="..\..\readWrite_modified_ag.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+  </ItemGroup>
 </Project>

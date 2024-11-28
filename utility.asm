@@ -97,4 +97,40 @@ _write_buffer:
 _exit:
     ret ; no params to pop
 util@itoa@8 endp
+
+; parseNum - parses an integer from a null-terminated ascii buffer.
+; input: edi - address of the character buffer
+; output: eax - parsed integer (negative if error)
+parseNum PROC near
+	mov  eax, 0 ; clear result
+	mov ecx, 0 ; valid digit flag
+
+next_digit:
+
+	mov edx, 0
+	mov dl, [edi] ; next byte from the buffer
+	cmp edx, 0 ; Check for null terminator
+	je done ; If null, we're done
+
+	; check this char is between '0' and '9'
+	cmp edx, '0' ; Check if less than '0'
+	jb done
+	cmp edx, '9' ; Check if greater than '9'
+	ja done
+
+	mov ecx, 1 ; set flag to valid
+	sub edx, '0' ; convert ascii to integer
+	imul eax, 10 ; eax = eax * 10
+	add eax, edx ; add the current digit to eax
+	inc edi ; move to the next character
+	jmp next_digit ; repeat
+
+done:
+	test ecx, ecx ; Check if we found any digits
+	jnz finish ; If EAX is not zero, we're good
+	mov eax, -1 ; No digits found, set EAX to -1
+
+finish:
+	ret
+parseNum ENDP
 end

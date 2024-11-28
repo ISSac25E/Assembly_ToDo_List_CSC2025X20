@@ -7,6 +7,8 @@
 
 extern _ExitProcess@4: near
 
+include string.inc
+
 include rtc_esp.inc
 include utility.inc
 

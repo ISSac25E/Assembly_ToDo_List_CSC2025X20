@@ -3,6 +3,10 @@
 ; 10 March 2024
 ;
 ; changelog:
+;   11-29-2024 - Wayne Cook
+;   - implemented cursor reset in clearConsole@0
+;   11-15-2024 - Amir Gorkovchenko
+;   - added clear console method
 ;   11-10-2024 - Amir Gorkovchenko
 ;   - revised naming convention
 ;   - adjusted modified registers to match __stdcall
@@ -35,6 +39,7 @@ extern _SetConsoleMode@8 : near
 extern _WriteConsoleA@20 : near
 extern _ReadConsoleA@20 : near
 extern _ExitProcess@4 :  near
+extern _SetConsoleCursorPosition@8 : near
 
 include utility.inc
 
@@ -78,7 +83,7 @@ initialize_console@0 ENDP
 ;; Call readline() - No Parameters, Returns ptr to buffer in eax
 ;; Now the read/write handles are set, read a line
 ; readLine@0()
-; returns void
+; returns buffer ptr
 readLine@0 PROC near
 _readline: 
     ; https://learn.microsoft.com/en-us/windows/console/readconsole
@@ -98,6 +103,33 @@ _readline:
     mov   eax, offset readBuffer
     ret
 readLine@0 ENDP
+
+; Call readLine_simple() - No Parameters, Returns ptr to buffer in eax
+; this version of read line will clear out carriage return and line feed
+;
+; readLine_simple@0()
+; returns buffer ptr
+readLine_simple@0 PROC near
+    call readLine@0
+
+    push eax
+
+_start_loop:
+    cmp byte ptr [eax], 13 ; CR
+    je _end_loop
+    cmp byte ptr [eax], 10 ; LF
+    je _end_loop
+    cmp byte ptr [eax], 0 ; control, don't want to be loop forever looking for non-existent chars
+    je _end_loop
+
+    inc eax ; next char
+    jmp _start_loop
+
+_end_loop:
+    mov byte ptr [eax], 0
+    pop eax
+    ret
+readLine_simple@0 ENDP
 
 ; write buffer to console
 ; writeLine@8(* data, dataLength)
@@ -189,6 +221,10 @@ clearConsole@0 proc near
     ; "\x1b" is an escape char = 1bh
     print_array_b 1bh, '[', '2', 'J'
     print_array_b 1bh, '[', '3', 'J'
+
+    push 0
+    push  outputHandle            ; [--]
+    call _SetConsoleCursorPosition@8
 
 
     ; restore the mode on the way out to be nice to other command-line applications

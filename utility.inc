@@ -5,9 +5,17 @@
 ; a collection of useful procedures declarations and macro definitions
 ; includes a varied pack of print macros for string, byte array, and integers
 
-
+; util@charCount@4 (* char buffer)
+; returns number of characters, null terminator not included
 extern util@charCount@4 : proc
+
+; util@itoa@8(int, *buffer)
+; returns address location immediately after written
 extern util@itoa@8 : proc
+
+; util@parseInt@4(*char)
+; returns 1 if success, 0 if failed. edx contains result
+extern util@parseInt@4 : proc
 
 ; required external procedures!
     ; writeString@4

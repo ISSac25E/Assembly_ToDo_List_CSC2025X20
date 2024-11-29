@@ -22,6 +22,14 @@ extern string@substr@12 : proc
 ; returns index of compare hit. -1 if compare failed
 extern string@strcmp@12 : proc
 
+; string@toLower@4(*this)
+; returns void
+extern string@toLower@4 : proc
+
+; string@delete@4(*this)
+; returns void
+extern string@delete@4 : proc
+
 set_string macro this:req, str:=<"">
     push_str &str&
     

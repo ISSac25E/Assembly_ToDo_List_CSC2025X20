@@ -24,6 +24,7 @@
 .code
 
 ; count number of chars in ansi string
+;
 ; util@charCount@4 (* char buffer)
 ; returns number of characters, null terminator not included
 util@charCount@4 proc near
@@ -47,6 +48,7 @@ util@charCount@4 endp
 
 ; convert signed integer into character array. Make sure array has enough space
 ; optimized to minimize stack footprint, recursive function
+;
 ; util@itoa@8(int, *buffer)
 ; returns address location immediately after written
 util@itoa@8 proc near
@@ -98,39 +100,69 @@ _exit:
     ret ; no params to pop
 util@itoa@8 endp
 
-; parseNum - parses an integer from a null-terminated ascii buffer.
-; input: edi - address of the character buffer
-; output: eax - parsed integer (negative if error)
-parseNum PROC near
-	mov  eax, 0 ; clear result
+; parse integer from *char
+; checks for negative numbers as well
+; returns 1 if success, 0 if failed
+; result in edx
+;
+; util@parseInt@4(*char)
+; returns 1 if success, 0 if failed. edx contains result
+util@parseInt@4 proc near
+    push ebp ; save base
+    push ebx
+    mov ebp, esp ; get stack pointer
+
+    push 10 ; mul value
+
+    mov eax, 0 ; clear result
 	mov ecx, 0 ; valid digit flag
 
-next_digit:
+    mov ebx, [ebp + 12] ; get *char
 
-	mov edx, 0
-	mov dl, [edi] ; next byte from the buffer
+    mov edx, 0
+    mov dl, [ebx] ; next byte from the buffer
+    cmp edx, '-' ; compare with minus sign
+    push 1 ; to be multiplied by result at the end
+    jne _next_digit
+
+    add esp, 4 ; pop
+    push -1 ; push negative
+    inc ebx ; increment to next character
+
+_next_digit:
+
+    mov edx, 0
+    mov dl, [ebx] ; next byte from the buffer
 	cmp edx, 0 ; Check for null terminator
-	je done ; If null, we're done
+	je _done ; If null, we're done
 
-	; check this char is between '0' and '9'
-	cmp edx, '0' ; Check if less than '0'
-	jb done
+    cmp edx, '0' ; Check if less than '0'
+	jb _done
 	cmp edx, '9' ; Check if greater than '9'
-	ja done
+	ja _done
 
-	mov ecx, 1 ; set flag to valid
+    mov ecx, 1 ; set flag to valid
 	sub edx, '0' ; convert ascii to integer
-	imul eax, 10 ; eax = eax * 10
+    push edx ; save edx for mul
+	mul dword ptr [ebp - 4] ; eax = eax * 10
+    pop edx ; restore
 	add eax, edx ; add the current digit to eax
-	inc edi ; move to the next character
-	jmp next_digit ; repeat
+	inc ebx ; move to the next character
+	jmp _next_digit ; repeat
 
-done:
-	test ecx, ecx ; Check if we found any digits
-	jnz finish ; If EAX is not zero, we're good
-	mov eax, -1 ; No digits found, set EAX to -1
+_done:
+    mov edx, eax ; mov result to result register
+    pop eax ; pop the signed multiply
+    imul edx, eax ; change sign if needed
+    mov eax, 1 ; assume good result
+    test ecx, ecx ; Check if we found any digits
+	jnz _exit ; If EAX is not zero, we're good
+	mov eax, 0 ; No digits found, set EAX to 0
 
-finish:
-	ret
-parseNum ENDP
+_exit:
+    mov esp, ebp ; reset stack
+    pop ebx
+    pop ebp
+    ret 4
+util@parseInt@4 endp
 end

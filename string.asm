@@ -138,45 +138,8 @@ _exit:
     ret 8
 string@set@8 endp
 
-; concatenate to string from another string. Source must be the address of the char array, NOT string class
-;
-; string@add@8(*this, *char)
-; returns void
-string@add@8 proc near
-    push ebp ; save base
-    mov ebp, esp ; get stack pointer
-
-    ; get new string length, must be non-zero:
-    push [ebp + 8 + 4]
-    call util@charCount@4
-    cmp eax, 0
-    je _exit ; no point adding empty string
-
-    push eax ; save new string length
-    
-    mov ecx, [ebp + 8] ; get this pointer
-    mov ecx, [ecx] ; get string pointer
-
-    cmp ecx, 0
-    je _string_uninitialized
-        
-        push ecx
-        call util@charCount@4
-
-        push eax ; store original string length
-
-    _string_uninitialized:
-
-
-    
-_exit:
-    mov esp, ebp ; reset stack
-    pop ebp
-    ret 8
-string@add@8 endp
-
 ; insert a *char into string object at given index. 
-; if index is greater than current string length, will be added at the end.
+; if index is greater than current string length, will be concatenated at the end.
 ;
 ; string@insert@12(*this, *char, index)
 ; returns void
@@ -276,7 +239,7 @@ _exit:
 string@insert@12 endp
 
 ; split a string according to start and stop index
-; reversing low and high index will reverse the string as well
+; reversing low and high indices will reverse the string as well
 ;
 ; string@substr@12(* this, int low_index, int high_index)
 ; returns void
@@ -470,6 +433,77 @@ _exit:
     pop ebp
     ret 12
 string@strcmp@12 endp
+
+; converts entire string to lowercase. useful for parsing inputs
+;
+; string@toLower@4(*this)
+; returns void
+string@toLower@4 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    ;;;;; initialize string if needed
+    mov ecx, [ebp + 8] ; get this
+    cmp dword ptr [ecx], 0
+    jne _string_initialized
+
+    push [ebp + 8]
+    call string@init@4
+
+    jmp _exit ; nothing to convert
+
+_string_initialized:
+
+    mov ecx, [ebp + 8] ; get this
+    mov ecx, [ecx] ; get string
+
+_loop_start:
+    cmp byte ptr [ecx], 0
+    je _exit ; null reached
+
+    cmp byte ptr [ecx], 'A'
+    jb _loop_end
+
+    cmp byte ptr [ecx], 'Z'
+    ja _loop_end
+
+    add byte ptr [ecx], 020h
+
+_loop_end:
+    inc ecx ; next char
+    jmp _loop_start
+
+_exit:
+    mov esp, ebp ; reset stack
+    pop ebp
+    ret 4
+string@toLower@4 endp
+
+
+; deallocate the string safely
+; no return
+;
+; string@delete@4(*this)
+; returns void
+string@delete@4 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+;;;;; get if initialized
+    mov ecx, [ebp + 8] ; get this
+    cmp dword ptr [ecx], 0
+    je _exit ; already de-init. just exit
+
+    push [eax] ; push string location
+    mov dword ptr [eax], 0 ; reset string
+    call string@util@free@4
+
+_exit:
+    mov esp, ebp ; reset stack
+    pop ebp
+    ret 4
+string@delete@4 endp
+
 
 ; simplify memory allocation for string
 ; input allocation size.

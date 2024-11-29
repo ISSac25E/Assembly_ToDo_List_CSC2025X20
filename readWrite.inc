@@ -3,8 +3,12 @@
 extern initialize_console@0 : proc
 
 ; readLine@0()
-; returns void
+; returns buffer ptr
 extern readLine@0 : proc
+
+; readLine_simple@0()
+; returns buffer ptr
+extern readLine_simple@0 : proc
 
 ; writeLine@8(* data, dataLength)
 ; returns void

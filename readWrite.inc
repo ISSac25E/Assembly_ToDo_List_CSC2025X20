@@ -21,3 +21,7 @@ extern writeString@4 : proc
 ; clearConsole@0()
 ; output: void
 extern clearConsole@0 : proc
+
+; scrollConsole@0()
+; output: void
+extern scrollConsole@0 : proc

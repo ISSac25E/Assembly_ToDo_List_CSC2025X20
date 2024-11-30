@@ -73,7 +73,7 @@ rtc_esp_start
         call string@set@8
 
         ;;;;; clear console and rewrite for better readability:
-        call clearConsole@0
+        call scrollConsole@0
 
         print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
         push parse_str
@@ -90,29 +90,19 @@ rtc_esp_start
             je _enter_command
 
             ;;;;; check <+>
-            ; if ((parse_str.compare("+ ") == 0 || parse_str.compare("+\t") == 0) && parse_str.length() > 2)
+            ; if ((parse_str.compare("+") == 0) && parse_str.length() > 1)
             push ebx ; ebx is callee saved
             xor ebx, ebx ; clear comparison register
+            mov bh, 1
 
-            strcmp offset parse_str, "+ ", 0
+            strcmp offset parse_str, "+", 0
             cmp eax, 0
             sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
-
-            push_array_b '+', 9, 0 ; "+\t"
-            push 0
-            push esp
-                add dword ptr [esp], 4
-            push offset parse_str
-            call string@strcmp@12
-            pop_array_b '+', 9, 0 ; "+\t"
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+            and bh, bl ; set high byte
 
             push offset parse_str
             call string@length@4
-            cmp eax, 2
+            cmp eax, 1
             seta bl ; must have minimum of two characters
             and bh, bl ; set high byte
 
@@ -121,31 +111,14 @@ rtc_esp_start
             je _plus_command ; plus command found
 
             ;;;;;; check <->
-            ; if ((parse_str.compare("- ") == 0 || parse_str.compare("-\t") == 0) && parse_str.length() > 2)
+            ; if ((parse_str.compare("-") == 0))
             push ebx ; ebx is callee saved
             xor ebx, ebx ; clear comparison register
 
-            strcmp offset parse_str, "- ", 0
+            strcmp offset parse_str, "-", 0
             cmp eax, 0
             sete bl ; set bl if ZF set
             or bh, bl ; set high byte
-
-            push_array_b '-', 9, 0 ; "-\t"
-            push 0
-            push esp
-                add dword ptr [esp], 4
-            push offset parse_str
-            call string@strcmp@12
-            pop_array_b '-', 9, 0 ; "-\t"
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
-
-            push offset parse_str
-            call string@length@4
-            cmp eax, 2
-            seta bl ; must have minimum of two characters
-            and bh, bl ; set high byte
 
             cmp bh, 1
             pop ebx ; restore
@@ -240,29 +213,87 @@ rtc_esp_start
 
         ;;;;;;;;;; run commands:
             _enter_command:
-                call clearConsole@0
+                call scrollConsole@0
                 jmp _end_command_search
                 
             _plus_command:
                 ; string@substr@12(* this, low index, high index)
                 ; returns void
                 push -1 ; get the entire end of string
-                push 2 ; clip two characters
+                push 1 ; clip one character
                 push offset parse_str
                 call string@substr@12
+
+                push -1 ; index to store node at
+
+                ; test if store index specified
+                ; util@parseInt@4(*char)
+                ; returns number of valid digit characters, 0 if failed. edx contains result
+                push parse_str
+                call util@parseInt@4
+
+                cmp eax, 0
+                je _plus_command_normal_add
+
+                mov ecx, parse_str
+                add ecx, eax
+                cmp byte ptr [ecx], 32 ; must be a space character
+                jne _plus_command_normal_add
+
+                add esp, 4 ; remove -1
+
+                ; store result
+                dec edx
+                push edx
+
+                inc eax
+                push -1 ; get the entire end of string
+                push eax ; clip head
+                push offset parse_str
+                call string@substr@12
+
+                _plus_command_normal_add:
+
+                pop edx ; index
+                push edx ; store again
 
                 ; linkedList@addNodeStr@12(* this, index, * char)
                 ; returns 0 failed, 1 success
                 push parse_str
-                push -1 ; end of the linked list
+                push edx ; index to store at
                 push offset toDo_ll_obj
                 call linkedList@addNodeStr@12
                 cmp eax, 0
                 je _plus_command_add_error
 
                     println_str
-                    println_str "1 item added"
+                    print_str "added item #"
+
+                    ; linkedList@nodeCount@4(* this)
+                    ; returns >=0 number of nodes on linked list
+                    push offset toDo_ll_obj
+                    call linkedList@nodeCount@4
+
+                    pop edx
+                    cmp eax, edx ; check if stored value was within ll range
+                    jae _plus_command_inside_range
+
+                    mov edx, eax ; change to end of list
+                    dec edx
+
+                    _plus_command_inside_range:
+
+                    inc edx
+                    print_int edx   ; print item list location
+                    print_array_b 32, 34
+
+                    push parse_str
+                    call writeString@4
+
+                    print_array_b 34
                     println_str
+                    println_str
+
                     jmp _end_command_search
 
                 _plus_command_add_error:
@@ -275,7 +306,7 @@ rtc_esp_start
                 ; string@substr@12(* this, low index, high index)
                 ; returns void
                 push -1 ; get the entire end of string
-                push 2 ; clip two characters
+                push 1 ; clip one character
                 push offset parse_str
                 call string@substr@12
 
@@ -345,14 +376,34 @@ rtc_esp_start
                     jnz _minus_command_number_error_range
 
                     ;;;;; delete item at selected index
-                    ; linkedList@deleteNode@8(* this, index)
-                    ; returns void
                     push edx
-                    push offset toDo_ll_obj
-                    call linkedList@deleteNode@8
-
                     println_str
-                    println_str "deleted 1 item"
+                    print_str "deleted item #"
+                        pop edx
+                        push edx
+                        inc edx
+                    print_int edx
+                    print_array_b 32, 34
+
+                        ; linkedList@getNodeData@8(* this, index)
+                        ; returns pointer to node data. null if node doesn't exist
+                        pop edx
+                        push edx
+                        push edx
+                        push offset toDo_ll_obj
+                        call linkedList@getNodeData@8
+
+                    push eax
+                    call writeString@4
+
+                        ; linkedList@deleteNode@8(* this, index)
+                        ; returns void
+                        ; push edx ; already pushed
+                        push offset toDo_ll_obj
+                        call linkedList@deleteNode@8
+
+                    print_array_b 32
+                    println_str
                     println_str
 
                     jmp _end_command_search
@@ -370,10 +421,84 @@ rtc_esp_start
                         jmp _end_command_search
 
                 _minus_command_string:
+                    println_str
 
-                    
+                    push offset toDo_ll_obj
+                    call linkedList@nodeCount@4
 
-                    println_str "delete string command ToDo"
+                    mov ecx, 0 ; counter value
+                    push eax
+                    push ecx
+
+                    _minus_command_string_start_loop:
+                        pop ecx
+                        pop eax
+                        cmp ecx, eax
+                        jae _minus_command_string_end_loop
+                        push eax
+                        push ecx
+
+                        ; linkedList@getNodeData@8(* this, index)
+                        ; returns pointer to node data. null if node doesn't exist
+                        push ecx
+                        push offset toDo_ll_obj
+                        call linkedList@getNodeData@8
+
+                        push 0 ; string object
+                        ; string@set@8(*this, *char)
+                        ; returns void
+                        push eax
+                        push esp
+                            add dword ptr [esp], 4
+                        call string@set@8
+
+                        ; string@strcmp@12(*this, *char compare, int start_index)
+                        ; returns index of compare hit. -1 if compare failed
+                        push 0
+                        push parse_str
+                        push esp
+                            add dword ptr [esp], 8
+                        call string@strcmp@12
+
+                        cmp eax, 0
+                        jge _minus_command_string_compare_hit
+
+                        add esp, 4 ; deallocate the string
+
+                        pop ecx
+                        inc ecx
+                        push ecx
+                        jmp _minus_command_string_start_loop
+
+                        _minus_command_string_compare_hit:
+
+                            print_str "deleted "
+                            print_array_b 34
+                            push [esp]
+                            call writeString@4
+                            print_array_b 34
+                            println_str
+
+                            add esp, 4 ; deallocate the string
+                            
+                            ; linkedList@deleteNode@8(* this, index)
+                            ; returns void
+                            pop ecx
+                            push ecx
+                            push ecx
+                            push offset toDo_ll_obj
+                            call linkedList@deleteNode@8
+
+                            pop ecx
+                            pop eax
+                            dec eax ; one less item in the list
+                            push eax
+                            push ecx
+
+                        jmp _minus_command_string_start_loop
+
+                    _minus_command_string_end_loop:
+
                     println_str 
                     jmp _end_command_search
 

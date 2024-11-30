@@ -3,6 +3,8 @@
 ; 10 March 2024
 ;
 ; changelog:
+;   11-30-2024 - Amir Gorkovchenko
+;   - added scrollConsole
 ;   11-29-2024 - Wayne Cook
 ;   - implemented cursor reset in clearConsole@0
 ;   11-15-2024 - Amir Gorkovchenko
@@ -242,6 +244,67 @@ _exit:
     pop ebp
     ret
 clearConsole@0 endp
+
+; scrolls console, does not delete history
+; returns console mode back to normal
+; https://learn.microsoft.com/en-us/windows/console/clearing-the-screen
+; scrollConsole@0()
+; output: void
+scrollConsole@0 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    sub esp, 4
+    push esp
+    push outputHandle
+    ; https://learn.microsoft.com/en-us/windows/console/getconsolemode
+    ; BOOL WINAPI GetConsoleMode(
+    ; _In_  HANDLE  hConsoleHandle,
+    ; _Out_ LPDWORD lpMode
+    ; );
+    call _GetConsoleMode@8
+
+    cmp eax, 0
+    je  _error
+
+    mov eax, [ebp - 4] ; get current console mode
+    or eax, 04h ; ENABLE_VIRTUAL_TERMINAL_PROCESSING ; https://learn.microsoft.com/en-us/windows/console/setconsolemode
+
+    ; https://learn.microsoft.com/en-us/windows/console/setconsolemode
+    ; BOOL WINAPI SetConsoleMode(
+    ; _In_ HANDLE hConsoleHandle,
+    ; _In_ DWORD  dwMode
+    ; );
+    push eax
+    push outputHandle
+    call _SetConsoleMode@8
+
+    cmp eax, 0
+    je _error
+    
+    push 0
+    push  outputHandle            ; [--]
+    call _SetConsoleCursorPosition@8
+
+    ; print "\x1b[2J", clear viewable screen
+    ; "\x1b" is an escape char = 1bh
+    print_array_b 1bh, '[', '2', 'J'
+
+    ; restore the mode on the way out to be nice to other command-line applications
+    ; pop eax   ; no need to pop and push
+    ; push eax
+    push outputHandle
+    call _SetConsoleMode@8
+
+    jmp _exit
+
+_error:
+
+_exit:
+    mov esp, ebp ; because of the error handling, make sure no vars are forgotten
+    pop ebp
+    ret
+scrollConsole@0 endp
 
 ; genNumber and writeNumber were removed for using callee saved registers without restoring
 END

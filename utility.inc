@@ -14,7 +14,7 @@ extern util@charCount@4 : proc
 extern util@itoa@8 : proc
 
 ; util@parseInt@4(*char)
-; returns 1 if success, 0 if failed. edx contains result. ecx contains count of digits parsed
+; returns number of valid digit characters, 0 if failed. edx contains result
 extern util@parseInt@4 : proc
 
 ; required external procedures!

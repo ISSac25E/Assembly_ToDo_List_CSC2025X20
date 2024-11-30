@@ -72,14 +72,15 @@ rtc_esp_start
         push offset parse_str
         call string@set@8
 
-        ; ;;;;; clear console and rewrite for better readability:
-        ; call clearConsole@0
+        ;;;;; clear console and rewrite for better readability:
+        call clearConsole@0
 
-        ; print_str "Input Command "
-        ; print_array_b 62,62,62,32 ; ">>> "
+        print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
+        push parse_str
+        call writeString@4
+        print_array_b 32, 3eh, 3eh, 3eh ; " >>>"
 
-        ; push parse_str
-        ; call writeString@4
+        println_str
 
         ;;;;; check if input matches a command
             ;;;;; check <ENTER>
@@ -163,7 +164,7 @@ rtc_esp_start
             push offset parse_str
             call string@length@4
             cmp eax, 1
-            sete al ; must have exactly one character
+            sete bl ; must have exactly one character
             and bh, bl ; set high byte
 
             cmp bh, 1
@@ -259,14 +260,124 @@ rtc_esp_start
                 cmp eax, 0
                 je _plus_command_add_error
 
+                    println_str
                     println_str "1 item added"
+                    println_str
                     jmp _end_command_search
 
                 _plus_command_add_error:
+                    println_str
                     println_str "Error adding to list"
+                    println_str
                     jmp _end_command_search
 
             _minus_command:
+                ; string@substr@12(* this, low index, high index)
+                ; returns void
+                push -1 ; get the entire end of string
+                push 2 ; clip two characters
+                push offset parse_str
+                call string@substr@12
+
+                ; check which type of minus command it is:
+                    ; if (util@parseInt@4(parse_str))
+                    ; else cmp with every node to delete str
+                    push ebx ; ebx is callee saved
+                    xor ebx, ebx ; clear comparison register
+                    mov bh, 1
+
+                    ; util@parseInt@4(*char)
+                    ; returns number of valid digit characters, 0 if failed. edx contains result
+                    push parse_str
+                    call util@parseInt@4
+                    cmp eax, 0
+                    seta bl
+                    and bh, bl ; set high byte
+
+                    cmp bh, 1
+                    pop ebx
+                    je _minus_command_number ; number command found
+
+                    jmp _minus_command_string ; string command
+
+
+                _minus_command_number:
+                    push ebx
+                    xor ebx, ebx ; clear compare value
+                    ; 0 = good command
+                    ; x1 = bad command format
+                    ; 1x = bad range
+
+                    ; save result value:
+                    push edx
+
+                    push eax ; save expected
+                    
+                    push offset parse_str
+                    call string@length@4
+                    pop ecx ; get expected length
+                    cmp eax, ecx
+                    setne bl
+                    or bh, bl ; set high byte (x1)
+
+                    ;;;;; get linkedList size
+                    ; linkedList@nodeCount@4(* this)
+                    ; returns >=0 number of nodes on linked list
+                    push offset toDo_ll_obj
+                    call linkedList@nodeCount@4
+
+                    ; restore result value:
+                    pop edx
+                    dec edx ; this will reflect the actual index of the linkedList (0->n, not 1->n)
+                    
+                    cmp edx, eax ; compare command with nodeCount
+                    setae bl
+                    shl bl, 1 ; shift left 1
+                    or bh, bl ; set high byte (1x)
+
+                    mov ah, bh
+                    pop ebx
+
+                    test ah, 01h ; test bit x1
+                    jnz _minus_command_number_error_format
+
+                    test ah, 02h ; test bit 1x
+                    jnz _minus_command_number_error_range
+
+                    ;;;;; delete item at selected index
+                    ; linkedList@deleteNode@8(* this, index)
+                    ; returns void
+                    push edx
+                    push offset toDo_ll_obj
+                    call linkedList@deleteNode@8
+
+                    println_str
+                    println_str "deleted 1 item"
+                    println_str
+
+                    jmp _end_command_search
+
+                    _minus_command_number_error_format:
+                        println_str
+                        println_str "delete command format error"
+                        println_str
+                        jmp _end_command_search
+
+                    _minus_command_number_error_range:
+                        println_str
+                        println_str "delete command range error"
+                        println_str
+                        jmp _end_command_search
+
+                _minus_command_string:
+
+                    
+
+                    println_str "delete string command ToDo"
+                    println_str 
+                    jmp _end_command_search
+
+
             _question_command:
                 ; print current list
                 push offset toDo_ll_obj

@@ -102,11 +102,11 @@ util@itoa@8 endp
 
 ; parse integer from *char
 ; checks for negative numbers as well
-; returns 1 if success, 0 if failed
+; returns number of valid digit characters
 ; result in edx
 ;
 ; util@parseInt@4(*char)
-; returns 1 if success, 0 if failed. edx contains result
+; returns number of valid digit characters, 0 if failed. edx contains result
 util@parseInt@4 proc near
     push ebp ; save base
     push ebx
@@ -127,6 +127,7 @@ util@parseInt@4 proc near
 
     add esp, 4 ; pop
     push -1 ; push negative
+    inc ecx
     inc ebx ; increment to next character
 
 _next_digit:
@@ -141,7 +142,7 @@ _next_digit:
 	cmp edx, '9' ; Check if greater than '9'
 	ja _done
 
-    mov ecx, 1 ; set flag to valid
+    inc ecx ; set flag to valid. count chars
 	sub edx, '0' ; convert ascii to integer
     push edx ; save edx for mul
 	mul dword ptr [ebp - 4] ; eax = eax * 10
@@ -154,10 +155,7 @@ _done:
     mov edx, eax ; mov result to result register
     pop eax ; pop the signed multiply
     imul edx, eax ; change sign if needed
-    mov eax, 1 ; assume good result
-    test ecx, ecx ; Check if we found any digits
-	jnz _exit ; If EAX is not zero, we're good
-	mov eax, 0 ; No digits found, set EAX to 0
+    mov eax, ecx ; move char count into return
 
 _exit:
     mov esp, ebp ; reset stack

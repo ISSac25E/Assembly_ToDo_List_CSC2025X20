@@ -24,6 +24,8 @@ _loop_start:
     call readLine_simple@0
 
 rtc_esp_start
+    ; util@parseInt@4(*char)
+    ; returns number of valid digit characters, 0 if failed. edx contains result
     push eax
     call util@parseInt@4
 rtc_esp_end
@@ -31,9 +33,11 @@ rtc_esp_end
     push edx
     push eax
     println_str
+    print_str "success: "
     pop eax
     print_int eax
-    print_str " "
+
+    print_str " result: "
     pop eax
     print_int eax
     println_str

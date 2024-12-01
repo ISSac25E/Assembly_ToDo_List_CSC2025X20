@@ -34,7 +34,7 @@ extern linkedList@deInit@4 : proc
 ; return void
 extern linkedList@print_linkedList@4 : proc
 
-; linkedList@store@8(*this, *char)
+; linkedList@load@8(*this, *char)
 ; returns: error code
 extern linkedList@load@8 : proc
 

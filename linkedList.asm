@@ -563,7 +563,7 @@ linkedList@print_linkedList@4 endp
 
 ; loads a linked from a file
 ; takes file-name string
-; linkedList@store@8(*this, *char)
+; linkedList@load@8(*this, *char)
 ; returns: error code
 ;   0 = no error
 ;   1 = open file error
@@ -691,33 +691,33 @@ linkedList@load@8 proc near
 
     _end_loop:
 
-_ll_error:
-    push [ebp - 4] ; file handler
-    call _CloseHandle@4
-    mov eax, 4 ; ll error
-    jmp _exit
+    _ll_error:
+        push [ebp - 4] ; file handler
+        call _CloseHandle@4
+        mov eax, 4 ; ll error
+        jmp _exit
 
-_corrupted_file_error:
-    push [ebp - 4] ; file handler
-    call _CloseHandle@4
-    mov eax, 3 ; corrupted file error
-    jmp _exit
+    _corrupted_file_error:
+        push [ebp - 4] ; file handler
+        call _CloseHandle@4
+        mov eax, 3 ; corrupted file error
+        jmp _exit
 
-_read_file_error:
-    push [ebp - 4] ; file handler
-    call _CloseHandle@4
-    mov eax, 2 ; read file error
-    jmp _exit
+    _read_file_error:
+        push [ebp - 4] ; file handler
+        call _CloseHandle@4
+        mov eax, 2 ; read file error
+        jmp _exit
 
-_open_file_error:
-    mov eax, 1 ; open file error
-    jmp _exit
+    _open_file_error:
+        mov eax, 1 ; open file error
+        jmp _exit
 
-_success:
-    push [ebp - 4] ; file handler
-    call _CloseHandle@4
-    mov eax, 0
-    jmp _exit
+    _success:
+        push [ebp - 4] ; file handler
+        call _CloseHandle@4
+        mov eax, 0
+        jmp _exit
 _exit:
     mov esp, ebp ; reset variables
     pop ebp

@@ -27,7 +27,7 @@ include linkedList.inc
 
 .data
 toDo_ll_obj dword 0
-toDo_list_file byte "list.todo.dat", 0
+toDo_list_default_file byte "default_list.todo.bin", 0 ; default file
 
 ; object used for decoding and parsing
 parse_str dword 0
@@ -42,7 +42,7 @@ rtc_esp_start
 
     ; string@set@8(*this, *char)
     ; returns void
-    push offset toDo_list_file
+    push offset toDo_list_default_file
     push offset open_file_str
     call string@set@8
 
@@ -208,6 +208,21 @@ rtc_esp_start
             cmp bh, 0
             pop ebx ; restore
             ja _exclamation_command ; exclamation command found
+
+            ;;;;;; check <*>
+            ; if (parse_str.compare("*") == 0)
+            push ebx
+            xor ebx, ebx
+            mov bh, 1
+            
+            strcmp offset parse_str, "*", 0
+            cmp eax, 0
+            sete bl ; set bl if ZF set
+            or bh, bl ; set high byte
+
+            cmp bh, 1
+            pop ebx ; restore
+            je _star_command
 
             jmp _input_error
 
@@ -430,11 +445,11 @@ rtc_esp_start
                     push eax
                     push ecx
 
-                    _minus_command_string_start_loop:
+                    _minus_command_string_loop_start:
                         pop ecx
                         pop eax
                         cmp ecx, eax
-                        jae _minus_command_string_end_loop
+                        jae _minus_command_string_loop_end
                         push eax
                         push ecx
 
@@ -465,10 +480,8 @@ rtc_esp_start
 
                         add esp, 4 ; deallocate the string
 
-                        pop ecx
-                        inc ecx
-                        push ecx
-                        jmp _minus_command_string_start_loop
+                        inc dword ptr [esp]
+                        jmp _minus_command_string_loop_start
 
                         _minus_command_string_compare_hit:
 
@@ -483,30 +496,23 @@ rtc_esp_start
                             
                             ; linkedList@deleteNode@8(* this, index)
                             ; returns void
-                            pop ecx
-                            push ecx
-                            push ecx
+                            push [esp] ; push counter
                             push offset toDo_ll_obj
                             call linkedList@deleteNode@8
 
-                            pop ecx
-                            pop eax
-                            dec eax ; one less item in the list
-                            push eax
-                            push ecx
+                            dec dword ptr [esp + 4] ; one less item in the list
 
-                        jmp _minus_command_string_start_loop
+                        jmp _minus_command_string_loop_start
 
-                    _minus_command_string_end_loop:
+                    _minus_command_string_loop_end:
 
-                    println_str 
+                    println_str
                     jmp _end_command_search
 
 
             _question_command:
-                ; print current list
-                push offset toDo_ll_obj
-                call linkedList@print_linkedList@4 ; for development only
+
+                call print_todo_list
                 jmp _end_command_search
 
             _help_command:
@@ -528,11 +534,80 @@ rtc_esp_start
                 call linkedList@store@8
                 println_str "Exiting..."
                 jmp _end_prog_loop
+            
+            _star_command:
+                ; string@substr@12(* this, low index, high index)
+                ; returns void
+                push -1 ; get the entire end of string
+                push 1 ; clip one character
+                push offset parse_str
+                call string@substr@12
+
+                ;;;;; close current file
+                ; linkedList@store@8(*this, *char)
+                ; returns: 0 failed, 1 success
+                push open_file_str
+                push offset toDo_ll_obj
+                call linkedList@store@8
+
+                push offset parse_str
+                call string@length@4
+
+                cmp eax, 0
+                je _star_command_open_default
+                    
+                    ; string@set@8(*this, *char)
+                    ; returns void
+                    push parse_str
+                    push offset open_file_str
+                    call string@set@8
+
+                    insert_string offset open_file_str, ".todo.bin", -1
+
+                    ; linkedList@load@8(*this, *char)
+                    ; returns: error code
+                    push open_file_str
+                    push offset toDo_ll_obj
+                    call linkedList@load@8
+
+                    cmp eax, 0
+                    jne _star_command_new_file
+                        println_str
+                        println_str "opened list"
+                        println_str
+                        jmp _end_command_search
+
+                    _star_command_new_file:
+                        println_str
+                        println_str "opened new list"
+                        println_str
+                        jmp _end_command_search
+
+                _star_command_open_default:
+
+                    ; string@set@8(*this, *char)
+                    ; returns void
+                    push offset toDo_list_default_file
+                    push offset open_file_str
+                    call string@set@8
+
+                    ; linkedList@load@8(*this, *char)
+                    ; returns: error code
+                    push open_file_str
+                    push offset toDo_ll_obj
+                    call linkedList@load@8
+
+                    println_str
+                    println_str "opened default list"
+                    println_str
+                    jmp _end_command_search
 
             _input_error:
                 println_str
                 println_str "Input Error! Try Again"
                 println_str
+                jmp _end_command_search
+
         _end_command_search:
         jmp _prog_loop
     _end_prog_loop:
@@ -543,6 +618,58 @@ rtc_esp_end
 	call	_ExitProcess@4
 
 main ENDP
+
+; format and print the to do list
+;
+; print_todo_list(void)
+; returns void
+print_todo_list proc near
+    println_str
+
+    ;;;;; get list item count
+    ; linkedList@nodeCount@4(* this)
+    ; returns >=0 number of nodes on linked list
+    push offset toDo_ll_obj
+    call linkedList@nodeCount@4
+
+    mov ecx, 0
+    push eax ; store count
+    push ecx ; counter value
+
+    _question_command_loop_start:
+        pop ecx ; counter value
+        pop eax ; item count
+        cmp ecx, eax
+        jae _question_command_loop_end
+        push eax ; store item count
+        push ecx ; counter value
+
+        print_str "#"
+            mov ecx, [esp] ; get counter
+            inc ecx
+        print_int ecx
+        print_array_b ':', 9 ; ":\t"
+
+        ; linkedList@getNodeData@8(* this, index)
+        ; returns pointer to node data. null if node doesn't exist
+        push [esp]
+        push offset toDo_ll_obj
+        call linkedList@getNodeData@8
+
+        push eax
+        call writeString@4
+        
+        println_str
+        
+        inc dword ptr [esp]
+        jmp _question_command_loop_start
+        
+    _question_command_loop_end:
+    println_str
+
+_exit:
+    ret
+print_todo_list endp
 
 print_instructions@0 proc near
     ; Please enter a command symbol (+, -, ? or !)
@@ -571,11 +698,6 @@ print_instructions@0 proc near
 
     print_array_b '<', '*', '>'
     println_str " Open New List"
-
-    print_array_b 60, 91 ; "<["
-    print_str "ENTER"
-    print_array_b 93, 62 ; "]>"
-    println_str " Clear Console"
 
     println_str
     

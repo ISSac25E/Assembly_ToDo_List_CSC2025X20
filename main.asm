@@ -218,7 +218,7 @@ rtc_esp_start
             strcmp offset parse_str, "*", 0
             cmp eax, 0
             sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+            and bh, bl ; set high byte
 
             cmp bh, 1
             pop ebx ; restore
@@ -512,7 +512,7 @@ rtc_esp_start
 
             _question_command:
 
-                call print_todo_list
+                call print_todo_list@0
                 jmp _end_command_search
 
             _help_command:
@@ -621,9 +621,9 @@ main ENDP
 
 ; format and print the to do list
 ;
-; print_todo_list(void)
+; print_todo_list@0(void)
 ; returns void
-print_todo_list proc near
+print_todo_list@0 proc near
     println_str
 
     ;;;;; get list item count
@@ -669,7 +669,7 @@ print_todo_list proc near
 
 _exit:
     ret
-print_todo_list endp
+print_todo_list@0 endp
 
 print_instructions@0 proc near
     ; Please enter a command symbol (+, -, ? or !)
@@ -680,9 +680,7 @@ print_instructions@0 proc near
     ; <*> Open List
     ; <[ENTER]> Clear Console
 
-    print_str "Please enter a command symbol (+, -, ? or "
-    print_array_b 21h ; '!'
-    println_str ")"
+    println_str "Please enter a command symbol"
 
     print_array_b '<', '+', '>'
     println_str " Add Chores"
@@ -693,11 +691,11 @@ print_instructions@0 proc near
     print_array_b '<', '?', '>'
     println_str " View List"
 
-    print_array_b '<', 21h, '>'
-    println_str " Save and Exit"
-
     print_array_b '<', '*', '>'
     println_str " Open New List"
+
+    print_array_b '<', 21h, '>'
+    println_str " Save and Exit"
 
     println_str
     

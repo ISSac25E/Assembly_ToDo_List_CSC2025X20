@@ -591,36 +591,80 @@ rtc_esp_start
                 push offset parse_str
                 call string@substr@12
 
-                ;;;;; close current file
-                ; linkedList@store@8(*this, *char)
-                ; returns: 0 failed, 1 success
-                push open_file_str
-                push offset toDo_ll_obj
-                call linkedList@store@8
-
                 push offset parse_str
                 call string@length@4
 
                 cmp eax, 0
-                je _star_command_open_default
+                jne _star_command_load
+
+                ;;;;; list available todo files:
+                _star_command_list_dir:
+                    push ebp ; base pointer
+                    mov ebp, esp
+
+                    push 0 ; [ebp - 4] allocate string object for extension manipulation
+                    ; string@set@8(*this, *char)
+                    ; returns void
+                    push offset toDo_list_extension
+                        lea eax, [ebp - 4] ; string object
+                    push eax
+                    call string@set@8
+
+                    ; string@insert@12(*this, *char, index)
+                    ; returns void
+                    push_str "*"
+                    push 0 ; beginning of string
+                    push esp
+                        add dword ptr [esp], 4 ; get *char
+                        lea eax, [ebp - 4] ; string object
+                    push eax
+                    call string@insert@12
+                    pop_str "*"
+
+                    push 0 ; allocate linkedList object [ebp - 8]
+
+                    ; util@listDir@8(linkedList *, char *)
+                    ; return void
+                        lea eax, [ebp - 4] ; string object
+                    push [eax] ; string pointer
+                        lea eax, [ebp - 8] ; linkedList object
+                    push eax
+                    call util@listDir@8
                     
+                        lea eax, [ebp - 8]
+                    push eax
+                    call print_todo_dir@4
+                    
+                    ;;;;; safely deallocate:
+                        lea eax, [ebp - 4] ; string object
+                    push eax ; string pointer
+                    call string@delete@4
+
+                        lea eax, [ebp - 8] ; linkedList object
+                    push eax
+                    call linkedList@deInit@4
+
+                    mov esp, ebp
+                    pop ebp
+
+                    push output_str
+                    call writeString@4
+                    jmp _end_command_search
+
+                _star_command_load:
+                    ;;;;; close current file
+                    ; linkedList@store@8(*this, *char)
+                    ; returns: 0 failed, 1 success
+                    push open_file_str
+                    push offset toDo_ll_obj
+                    call linkedList@store@8
+
                     ; string@set@8(*this, *char)
                     ; returns void
                     push parse_str
                     push offset open_file_str
                     call string@set@8
 
-                    jmp _star_command_load
-
-                _star_command_open_default:
-
-                    ; string@set@8(*this, *char)
-                    ; returns void
-                    push offset toDo_list_default_file
-                    push offset open_file_str
-                    call string@set@8
-
-                _star_command_load:
                     ; string@insert@12(*this, *char, index)
                     ; returns void
                     push -1
@@ -664,6 +708,72 @@ rtc_esp_end
 
 main ENDP
 
+; formats and prints directory of available files
+;
+; print_todo_dir@4(*linkedList)
+; return void
+print_todo_dir@4 proc near
+    push ebp
+    mov ebp, esp
+
+    println_str "Available lists:"
+    
+    push offset toDo_list_extension
+    call util@charCount@4
+    push eax ; [ebp - 4] extension character count
+
+    ;;;;; get directory item count
+    ; linkedList@nodeCount@4(* this)
+    ; returns >=0 number of nodes on linked list
+    push [ebp + 8] ; ll object
+    call linkedList@nodeCount@4
+
+    mov ecx, 0
+    push eax ; store count
+    push ecx ; counter value
+
+    _list_dir_loop_start:
+        pop ecx ; counter value
+        pop eax ; item count
+        cmp ecx, eax
+        jae _list_dir_loop_end
+        push eax ; store item count
+        push ecx ; counter value
+
+        print_str " - "
+
+        push [esp] ; push index
+        push [ebp + 8]
+        call linkedList@getNodeData@8
+        push eax ; store node data
+
+        push [esp + 4] ; push index
+        push [ebp + 8]
+        call linkedList@getNodeSize@8
+
+        sub eax, [ebp - 4]
+        dec eax ; because of null terminator in ll
+        pop ecx ; node data
+
+        ; writeLine@8(* data, dataLength)
+        ; returns void
+        push eax
+        push ecx
+        call writeLine@8
+
+        println_str
+        
+        inc dword ptr [esp] ; increment counter
+        jmp _list_dir_loop_start
+    _list_dir_loop_end:
+    println_str
+    
+_exit:
+    mov esp, ebp
+    pop ebp
+    ret 4
+print_todo_dir@4 endp
+
 ; format and print the to do list
 ;
 ; print_todo_list@0(void)
@@ -705,11 +815,11 @@ print_todo_list@0 proc near
     push eax ; store count
     push ecx ; counter value
 
-    _question_command_loop_start:
+    _print_list_loop_start:
         pop ecx ; counter value
         pop eax ; item count
         cmp ecx, eax
-        jae _question_command_loop_end
+        jae _print_list_loop_end
         push eax ; store item count
         push ecx ; counter value
 
@@ -731,9 +841,9 @@ print_todo_list@0 proc near
         println_str
         
         inc dword ptr [esp]
-        jmp _question_command_loop_start
+        jmp _print_list_loop_start
         
-    _question_command_loop_end:
+    _print_list_loop_end:
 
 _exit:
     ret

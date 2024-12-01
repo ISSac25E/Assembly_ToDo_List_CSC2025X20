@@ -1,6 +1,5 @@
 # Assembly_ToDo_List - Amir Gorkovchenko (Fall 2024)
 
-## !! IN PROGRESS !!
 
 Simple command line todo list application programed in x86 assembly using MASM.
 

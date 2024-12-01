@@ -2,6 +2,9 @@
 ; Amir Gorkovchenko
 ; 09 Nov 2024
 
+; 11-30-2024
+; - added list directory function
+
 ; collection of useful utility functions
 
 ; using __stdcall: https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
@@ -19,6 +22,12 @@
 
 .386P
 .model flat
+
+extern _FindFirstFileA@8 : near
+extern _FindNextFileA@8 : near
+extern _FindClose@4 : near
+
+include linkedList.inc
 
 .data
 .code
@@ -163,4 +172,101 @@ _exit:
     pop ebp
     ret 4
 util@parseInt@4 endp
+
+; find directories and list into a LinkedList
+; input a wild card filename: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
+;
+; util@listDir@8(linkedList *, char *)
+; return void
+util@listDir@8 proc near
+    push ebp ; save base
+    mov ebp, esp ; get stack pointer
+
+    ;;;;; clear linkedList before starting
+    ; linkedList@deinit@4(* this)
+    ; returns void
+    push [ebp + 8] ; get ll
+    call linkedList@deinit@4
+
+    ; MAX_PATH = 260
+    ; typedef struct _WIN32_FIND_DATAA {
+    ;   DWORD    dwFileAttributes;
+    ;   QWORD FILETIME ftCreationTime; https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    ;   QWORD FILETIME ftLastAccessTime; https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    ;   QWORD FILETIME ftLastWriteTime; https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    ;   DWORD    nFileSizeHigh;
+    ;   DWORD    nFileSizeLow;
+    ;   DWORD    dwReserved0;
+    ;   DWORD    dwReserved1;
+    ;   CHAR     cFileName[MAX_PATH];
+    ;   CHAR     cAlternateFileName[14];
+    ;   DWORD    dwFileType; // Obsolete. Do not use.
+    ;   DWORD    dwCreatorType; // Obsolete. Do not use
+    ;   WORD     wFinderFlags; // Obsolete. Do not use
+    ; } WIN32_FIND_DATAA, *PWIN32_FIND_DATAA, *LPWIN32_FIND_DATAA;
+    ; 4 + 8 + 8 + 8 + 4 + 4 + 4 + 4 + 260 + 14 + 4 + 4 + 2 = 328
+    sub esp, 328
+
+    ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
+    ; HANDLE FindFirstFileA(
+    ; [in]  LPCSTR             lpFileName,
+    ; [out] LPWIN32_FIND_DATAA lpFindFileData
+    ; );
+    push esp
+    push [ebp + 8 + 4] ; get input file name
+    call _FindFirstFileA@8
+
+    ; find file handle
+    sub esp, 4 ; [ebp - 332]
+    
+    mov [ebp - 332], eax
+
+    cmp dword ptr [ebp - 332], -1
+    je _end_search
+
+    ; linkedList@addNodeStr@12(* this, index, * char)
+    ; returns 0 failed, 1 success
+    lea eax, [ebp - 328 + 4 + 8 + 8 + 8 + 4 + 4 + 4 + 4] ; get file name
+    push eax
+    push -1
+    push [ebp + 8]
+    call linkedList@addNodeStr@12
+
+    _search_loop:
+        ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findnextfilea
+        ; BOOL FindNextFileA(
+        ; [in]  HANDLE             hFindFile,
+        ; [out] LPWIN32_FIND_DATAA lpFindFileData
+        ; );
+        push esp ; allocated structure memory
+            add dword ptr [esp], 4
+        push [esp + 4] ; handle
+        call _FindNextFileA@8
+        cmp eax, 0
+        je _close_search ; next file not found
+
+        ; saved located file:
+        lea eax, [ebp - 328 + 4 + 8 + 8 + 8 + 4 + 4 + 4 + 4] ; get file name
+        push eax
+        push -1
+        push [ebp + 8]
+        call linkedList@addNodeStr@12
+
+        jmp _search_loop
+
+_close_search:
+    ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findclose
+    ; BOOL FindClose(
+    ; [in, out] HANDLE hFindFile
+    ; );
+    push [esp]
+    call _FindClose@4
+
+_end_search:
+
+_exit:
+    mov esp, ebp ; because of the error handling, make sure no vars are forgotten
+    pop ebp
+    ret 8
+util@listDir@8 endp
 end

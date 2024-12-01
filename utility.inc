@@ -17,6 +17,10 @@ extern util@itoa@8 : proc
 ; returns number of valid digit characters, 0 if failed. edx contains result
 extern util@parseInt@4 : proc
 
+; util@listDir@8(linkedList *, char *)
+; return void
+extern util@listDir@8 : proc
+
 ; required external procedures!
     ; writeString@4
     ; util@itoa@8

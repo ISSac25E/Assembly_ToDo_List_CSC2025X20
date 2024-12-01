@@ -34,6 +34,7 @@ extern _RtlMoveMemory@12 : proc
 extern _CreateFileA@28 : near
 extern _WriteFile@20 : near
 extern _ReadFile@20 : near
+extern _DeleteFileA@4 : near
 extern _CloseHandle@4 : near
 
 include readWrite.inc
@@ -765,8 +766,8 @@ linkedList@store@8 proc near
     call linkedList@nodeCount@4
 
     push eax ; save NodeCount [ebp - 8]
-    ; cmp eax, 0 ; empty ll will mean empty file. simple
-    ; jbe _empty_ll
+    cmp eax, 0 ; empty ll. will delete file
+    jbe _empty_ll
 
     mov ecx, 0 ; counter var
     _start_loop:
@@ -823,7 +824,24 @@ linkedList@store@8 proc near
     jmp _success
 
 _file_missed_write_error:
-    
+
+_empty_ll:
+    ; https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
+    ; BOOL CloseHandle(
+    ;   [in] HANDLE hObject
+    ; );
+    push [ebp - 4] ; file handler
+    call _CloseHandle@4
+
+    ; https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-deletefilea
+    ; BOOL DeleteFileA(
+    ;   [in] LPCSTR lpFileName
+    ; );
+    push [ebp + 8 + (1 * 4)] ; file name
+    call _DeleteFileA@4
+    mov eax, 0 ; success
+    jmp _exit
+
 _file_write_error:
     ; todo, close file, maybe delete?
     ; https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle

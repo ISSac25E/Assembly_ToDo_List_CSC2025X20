@@ -717,6 +717,7 @@ print_todo_dir@4 proc near
     mov ebp, esp
 
     println_str "Available lists:"
+    println_str
     
     push offset toDo_list_extension
     call util@charCount@4
@@ -827,7 +828,7 @@ print_todo_list@0 proc near
             mov ecx, [esp] ; get counter
             inc ecx
         print_int ecx
-        print_array_b ':', 9 ; ":\t"
+        print_str ": "
 
         ; linkedList@getNodeData@8(* this, index)
         ; returns pointer to node data. null if node doesn't exist

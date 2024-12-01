@@ -69,33 +69,33 @@ endm
 
 
 ;;;;;;;; collection of print functions modded to work with the string class instead
-string@print_array_b macro args:vararg
+string@print_array_b macro this:req, args:vararg
     push_array_b &args&, 0
     push -1
     push esp
         add dword ptr [esp], 4
-    push offset output_str
+    push this
     call string@insert@12
     pop_array_b &args&, 0
 endm
 
-string@print_str macro str:req
-    insert_string offset output_str, str, -1 ; insert at the end
+string@print_str macro this:req, str:req
+    insert_string this, str, -1 ; insert at the end
 endm
 
-string@println_str macro str:=<"">
+string@println_str macro this:req, str:=<"">
     push_str_ln &str&
 
     push -1
     push esp
         add dword ptr [esp], 4
-    push offset output_str
+    push this
     call string@insert@12
 
     pop_str_ln &str&
 endm
 
-string@print_int macro num:req
+string@print_int macro this:req, num:req
     push eax ; store eax
 
     sub esp, 12 ; buffer for largest possible negative 32-bit number with null-term
@@ -110,7 +110,7 @@ string@print_int macro num:req
     push -1
     push esp
         add dword ptr [esp], 4
-    push offset output_str
+    push this
     call string@insert@12
 
     add esp, 12 ; deallocate
@@ -118,10 +118,10 @@ string@print_int macro num:req
     pop eax ; restore eax
 endm
 
-string@writeString@4 macro
+string@writeString@4 macro this:req
     pop eax
     push -1
     push eax
-    push offset output_str
+    push this
     call string@insert@12
 endm

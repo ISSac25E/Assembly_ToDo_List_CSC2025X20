@@ -8,5 +8,8 @@
 !*.inc
 !*.vcxproj*
 !*.sln
+!*.todo.bin
+!*.exe
+!*.png
 
 *.txt

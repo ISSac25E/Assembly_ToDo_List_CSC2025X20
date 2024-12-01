@@ -2,6 +2,9 @@
 ; Amir Gorkovchenko
 ; 11-14-2024
 
+; simple and lightweight console todo list application
+; input simple, single character commands to control application
+
 ; reg reference:
 ;     eax - caller saved register - usually used for communication between caller and callee.
 ;     ebx - callee saved register
@@ -18,51 +21,74 @@
 extern _ExitProcess@4: near
 
 include string.inc
-
 include rtc_esp.inc
 include utility.inc
-
 include readWrite.inc
 include linkedList.inc
 
 .data
 toDo_ll_obj dword 0
-toDo_list_extension byte ".todo.bin", 0
-toDo_list_default_file byte "default_list", 0 ; default file
 
-; object used for decoding and parsing
+; string constants:
+toDo_list_extension byte ".todo.bin", 0
+toDo_list_default_file byte "list", 0 ; default file
+
+; string objects used for parsing input and storing output
 parse_str dword 0
 output_str dword 0
 
+; string object used to keep track of current open file
 open_file_str dword 0
 
 .code
+; main program sequence structure
+;   initialization
+;       program loop:
+;           prompt
+;           get input
+;           parse input
+;               plus command
+;               minus command
+;               ...
+;               jump to command run
+;           command run
+;               plus command run
+;               minus command run
+;               ...
+;               end program command
+;                   jmp to end loop
+;               error handling
+;           jump to program loop
+;   end loop
+;   check debugger
+;   exit
 main proc near
 rtc_esp_fail
 rtc_esp_start
     call initialize_console@0
 
-    ; string@set@8(*this, *char)
-    ; returns void
-    push offset toDo_list_default_file
-    push offset open_file_str
-    call string@set@8
-    
-    ; string@insert@12(*this, *char, index)
-    ; returns void
-    push -1
-    push offset toDo_list_extension
-    push offset open_file_str
-    call string@insert@12
+    ;;;;; open file and load list:
+        ; string@set@8(*this, *char)
+        ; returns void
+        push offset toDo_list_default_file
+        push offset open_file_str
+        call string@set@8
+        
+        ; string@insert@12(*this, *char, index)
+        ; returns void
+        push -1
+        push offset toDo_list_extension
+        push offset open_file_str
+        call string@insert@12
 
-    ; linkedList@load@8(*this, *char)
-    ; returns: error code
-    push open_file_str
-    push offset toDo_ll_obj
-    call linkedList@load@8
+        ; linkedList@load@8(*this, *char)
+        ; returns: error code
+        push open_file_str
+        push offset toDo_ll_obj
+        call linkedList@load@8
 
+    ; initial welcome print:
     call print_todo_list@0
-
     call print_instructions@0
 
     ; loops forever until program exit called:
@@ -77,159 +103,153 @@ rtc_esp_start
         push offset parse_str
         call string@set@8
 
-        ;;;;; clear console and rewrite for better readability:
-        call scrollConsole@0
+        ;;;;; clear console and rewrite for better readability
+            ; use output_str to buffer
+        call scrollConsole@0 ; scroll, don't delete console history
 
-        set_string offset output_str
+        set_string offset output_str ; reset string
 
-        ; string@print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
-        ; push parse_str
-        ; string@writeString@4
-        ; string@print_array_b 32, 3eh, 3eh, 3eh ; " >>>"
-
-        ; string@println_str
-
-        ;;;;; check if input matches a command
+        ;;;;;;;;;; parse input command
             ;;;;; check <ENTER>
-            push offset parse_str
-            call string@length@4
-            cmp eax, 0
-            je _enter_command
+                push offset parse_str
+                call string@length@4
+                cmp eax, 0
+                je _enter_command
 
             ;;;;; check <+>
-            ; if ((parse_str.compare("+") == 0) && parse_str.length() > 1)
-            push ebx ; ebx is callee saved
-            xor ebx, ebx ; clear comparison register
-            mov bh, 1
+                ; if ((parse_str.compare("+") == 0) && parse_str.length() > 1)
+                push ebx ; ebx is callee saved
+                xor ebx, ebx ; clear comparison register
+                mov bh, 1
 
-            strcmp offset parse_str, "+", 0
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            and bh, bl ; set high byte
+                strcmp offset parse_str, "+", 0
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                and bh, bl ; set high byte
 
-            push offset parse_str
-            call string@length@4
-            cmp eax, 1
-            seta bl ; must have minimum of two characters
-            and bh, bl ; set high byte
+                push offset parse_str
+                call string@length@4
+                cmp eax, 1
+                seta bl ; must have minimum of two characters
+                and bh, bl ; set high byte
 
-            cmp bh, 1
-            pop ebx ; restore
-            je _plus_command ; plus command found
+                cmp bh, 1
+                pop ebx ; restore
+                je _plus_command ; plus command found
 
             ;;;;;; check <->
-            ; if ((parse_str.compare("-") == 0))
-            push ebx ; ebx is callee saved
-            xor ebx, ebx ; clear comparison register
+                ; if ((parse_str.compare("-") == 0))
+                push ebx ; ebx is callee saved
+                xor ebx, ebx ; clear comparison register
 
-            strcmp offset parse_str, "-", 0
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+                strcmp offset parse_str, "-", 0
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                or bh, bl ; set high byte
 
-            cmp bh, 1
-            pop ebx ; restore
-            je _minus_command ; plus command found
+                cmp bh, 1
+                pop ebx ; restore
+                je _minus_command ; plus command found
 
             ;;;;;; check <?>
-            ; if (parse_str.compare("?") == 0 && parse_str.length() == 1)
-            push ebx ; ebx is callee saved
-            xor ebx, ebx ; clear comparison register
+                ; if (parse_str.compare("?") == 0 && parse_str.length() == 1)
+                push ebx ; ebx is callee saved
+                xor ebx, ebx ; clear comparison register
 
-            strcmp offset parse_str, "?", 0
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+                strcmp offset parse_str, "?", 0
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                or bh, bl ; set high byte
 
-            push offset parse_str
-            call string@length@4
-            cmp eax, 1
-            sete bl ; must have exactly one character
-            and bh, bl ; set high byte
+                push offset parse_str
+                call string@length@4
+                cmp eax, 1
+                sete bl ; must have exactly one character
+                and bh, bl ; set high byte
 
-            cmp bh, 1
-            pop ebx ; restore
-            je _question_command ; question command found
+                cmp bh, 1
+                pop ebx ; restore
+                je _question_command ; question command found
 
             ;;;;;; check <help>
-            ; if (parse_str.compare("help") == 0 && parse_str.length() == 4)
-            push ebx
-            xor ebx, ebx
+                ; if (parse_str.compare("help") == 0 && parse_str.length() == 4)
+                push ebx
+                xor ebx, ebx
 
-            ; create new string object
-            push 0 ; << empty string object
+                ; create new string object to convert to lower
+                push 0 ; << empty string object
 
-            ; string@set@8(*this, *char)
-            ; returns void
-            push parse_str ; push string address, not this
-            push esp
-                add dword ptr [esp], 4 ; increment to capture correct address
-            call string@set@8
+                ; string@set@8(*this, *char)
+                ; returns void
+                push parse_str ; push string address, not this
+                push esp
+                    add dword ptr [esp], 4 ; increment to capture correct address
+                call string@set@8
 
-            ; string@toLower@4(*this)
-            ; returns void
-            push esp ; push this
-            call string@toLower@4
+                ; string@toLower@4(*this)
+                ; returns void
+                push esp ; new string object
+                call string@toLower@4
 
-            mov ecx, esp ; temporarily move to ecx to compare
+                mov ecx, esp ; temporarily move to ecx to compare
 
-            strcmp ecx, "help", 0
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+                strcmp ecx, "help", 0
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                or bh, bl ; set high byte
 
-            push esp
-            call string@length@4
-            cmp eax, 4
-            sete bl ; must have exactly 4 characters for "help"
-            and bh, bl ; set high byte
+                push esp
+                call string@length@4
+                cmp eax, 4
+                sete bl ; must have exactly 4 characters for "help"
+                and bh, bl ; set high byte
 
-            add esp, 4 ; dealloc string object
-            
-            cmp bh, 0
-            pop ebx ; restore
-            ja _help_command ; question command found
+                add esp, 4 ; dealloc string object
+                
+                cmp bh, 0
+                pop ebx ; restore
+                ja _help_command ; question command found
 
             ;;;;;; check <!>
-            ; if (parse_str.compare("!") == 0 && parse_str.length() == 1)
-            push ebx ; ebx is callee saved
-            xor ebx, ebx ; clear comparison register
+                ; if (parse_str.compare("!") == 0 && parse_str.length() == 1)
+                push ebx ; ebx is callee saved
+                xor ebx, ebx ; clear comparison register
 
-            push_array_b 21h, 0 ; "!"
-            push 0
-            push esp
-                add dword ptr [esp], 4
-            push offset parse_str
-            call string@strcmp@12
-            pop_array_b 21h, 0 ; "!"
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            or bh, bl ; set high byte
+                push_array_b 21h, 0 ; "!"
+                push 0
+                push esp
+                    add dword ptr [esp], 4
+                push offset parse_str
+                call string@strcmp@12
+                pop_array_b 21h, 0 ; "!"
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                or bh, bl ; set high byte
 
-            push offset parse_str
-            call string@length@4
-            cmp eax, 1
-            sete al ; must have exactly one character
-            and bh, bl ; set high byte
-            
-            cmp bh, 0
-            pop ebx ; restore
-            ja _exclamation_command ; exclamation command found
+                push offset parse_str
+                call string@length@4
+                cmp eax, 1
+                sete al ; must have exactly one character
+                and bh, bl ; set high byte
+                
+                cmp bh, 0
+                pop ebx ; restore
+                ja _exclamation_command ; exclamation command found
 
             ;;;;;; check <*>
-            ; if (parse_str.compare("*") == 0)
-            push ebx
-            xor ebx, ebx
-            mov bh, 1
-            
-            strcmp offset parse_str, "*", 0
-            cmp eax, 0
-            sete bl ; set bl if ZF set
-            and bh, bl ; set high byte
+                ; if (parse_str.compare("*") == 0)
+                push ebx
+                xor ebx, ebx
+                mov bh, 1
+                
+                strcmp offset parse_str, "*", 0
+                cmp eax, 0
+                sete bl ; set bl if ZF set
+                and bh, bl ; set high byte
 
-            cmp bh, 1
-            pop ebx ; restore
-            je _star_command
+                cmp bh, 1
+                pop ebx ; restore
+                je _star_command
 
             jmp _input_error
 
@@ -260,18 +280,12 @@ rtc_esp_start
                 cmp eax, 0
                 je _plus_command_normal_add
 
-                mov ecx, parse_str
-                add ecx, eax
-                cmp byte ptr [ecx], 32 ; must be a space character
-                jne _plus_command_normal_add
-
-                add esp, 4 ; remove -1
+                add esp, 4 ; remove -1, replace with edx
 
                 ; store result
-                dec edx
+                dec edx ; counting from 0, not 1
                 push edx
 
-                inc eax
                 push -1 ; get the entire end of string
                 push eax ; clip head
                 push offset parse_str
@@ -291,8 +305,8 @@ rtc_esp_start
                 cmp eax, 0
                 je _plus_command_add_error
 
-                    string@println_str
-                    string@print_str "added item #"
+                    string@println_str offset output_str
+                    string@print_str offset output_str, "added item #"
 
                     ; linkedList@nodeCount@4(* this)
                     ; returns >=0 number of nodes on linked list
@@ -301,7 +315,7 @@ rtc_esp_start
 
                     pop edx
                     cmp eax, edx ; check if stored value was within ll range
-                    jae _plus_command_inside_range
+                    ja _plus_command_inside_range
 
                     mov edx, eax ; change to end of list
                     dec edx
@@ -309,15 +323,15 @@ rtc_esp_start
                     _plus_command_inside_range:
 
                     inc edx
-                    string@print_int edx   ; print item list location
-                    string@print_array_b 32, 34
+                    string@print_int offset output_str, edx   ; print item list location
+                    string@print_array_b offset output_str, 32, 34
 
                     push parse_str
-                    string@writeString@4
+                    string@writeString@4 offset output_str
 
-                    string@print_array_b 34
-                    string@println_str
-                    string@println_str
+                    string@print_array_b offset output_str, 34
+                    string@println_str offset output_str
+                    string@println_str offset output_str
 
                     call print_todo_list@0
                     
@@ -327,9 +341,9 @@ rtc_esp_start
                     jmp _end_command_search
 
                 _plus_command_add_error:
-                    string@println_str
-                    string@println_str "Error adding to list"
-                    string@println_str
+                    string@println_str offset output_str
+                    string@println_str offset output_str, "Error adding to list"
+                    string@println_str offset output_str
 
                     call print_todo_list@0
 
@@ -412,13 +426,13 @@ rtc_esp_start
 
                     ;;;;; delete item at selected index
                     push edx
-                    string@println_str
-                    string@print_str "deleted item #"
+                    string@println_str offset output_str
+                    string@print_str offset output_str, "deleted item #"
                         pop edx
                         push edx
                         inc edx
-                    string@print_int edx
-                    string@print_array_b 32, 34
+                    string@print_int offset output_str, edx
+                    string@print_array_b offset output_str, 32, 34
 
                         ; linkedList@getNodeData@8(* this, index)
                         ; returns pointer to node data. null if node doesn't exist
@@ -429,7 +443,7 @@ rtc_esp_start
                         call linkedList@getNodeData@8
 
                     push eax
-                    string@writeString@4
+                    string@writeString@4 offset output_str
 
                         ; linkedList@deleteNode@8(* this, index)
                         ; returns void
@@ -437,9 +451,9 @@ rtc_esp_start
                         push offset toDo_ll_obj
                         call linkedList@deleteNode@8
 
-                    string@print_array_b 32
-                    string@println_str
-                    string@println_str
+                    string@print_array_b offset output_str, 32
+                    string@println_str offset output_str
+                    string@println_str offset output_str
 
                     call print_todo_list@0
                     
@@ -449,9 +463,9 @@ rtc_esp_start
                     jmp _end_command_search
 
                     _minus_command_number_error_format:
-                        string@println_str
-                        string@println_str "delete command format error"
-                        string@println_str
+                        string@println_str offset output_str
+                        string@println_str offset output_str, "delete command format error"
+                        string@println_str offset output_str
 
                         call print_todo_list@0
                     
@@ -460,9 +474,9 @@ rtc_esp_start
                         jmp _end_command_search
 
                     _minus_command_number_error_range:
-                        string@println_str
-                        string@println_str "delete command range error"
-                        string@println_str
+                        string@println_str offset output_str
+                        string@println_str offset output_str, "delete command range error"
+                        string@println_str offset output_str
 
                         call print_todo_list@0
                     
@@ -470,8 +484,9 @@ rtc_esp_start
                         call writeString@4
                         jmp _end_command_search
 
+                ; will search all items for a good match
                 _minus_command_string:
-                    string@println_str
+                    string@println_str offset output_str
 
                     push offset toDo_ll_obj
                     call linkedList@nodeCount@4
@@ -480,6 +495,7 @@ rtc_esp_start
                     push eax
                     push ecx
 
+                    ; go through each node to compare:
                     _minus_command_string_loop_start:
                         pop ecx
                         pop eax
@@ -494,7 +510,8 @@ rtc_esp_start
                         push offset toDo_ll_obj
                         call linkedList@getNodeData@8
 
-                        push 0 ; string object
+                        push 0 ; allocate string object. string object allows for comparison
+
                         ; string@set@8(*this, *char)
                         ; returns void
                         push eax
@@ -520,12 +537,12 @@ rtc_esp_start
 
                         _minus_command_string_compare_hit:
 
-                            string@print_str "deleted "
-                            string@print_array_b 34
+                            string@print_str offset output_str, "deleted "
+                            string@print_array_b offset output_str, 34
                             push [esp]
-                            string@writeString@4
-                            string@print_array_b 34
-                            string@println_str
+                            string@writeString@4 offset output_str
+                            string@print_array_b offset output_str, 34
+                            string@println_str offset output_str
 
                             add esp, 4 ; deallocate the string
                             
@@ -541,13 +558,13 @@ rtc_esp_start
 
                     _minus_command_string_loop_end:
 
-                    string@println_str
+                    ; finish printing:
+                    string@println_str offset output_str
                     call print_todo_list@0
                     
                     push output_str
                     call writeString@4
                     jmp _end_command_search
-
 
             _question_command:
 
@@ -566,18 +583,18 @@ rtc_esp_start
                 jmp _end_command_search
 
             _exclamation_command:
-                string@println_str
-                string@print_str "Saving "
+                string@println_str offset output_str
+                string@print_str offset output_str, "Saving "
                 push open_file_str
-                string@writeString@4
-                string@println_str
+                string@writeString@4 offset output_str
+                string@println_str offset output_str
 
                 ; linkedList@store@8(*this, *char)
                 ; returns: 0 failed, 1 success
                 push open_file_str
                 push offset toDo_ll_obj
                 call linkedList@store@8
-                string@println_str "Exiting..."
+                string@println_str offset output_str, "Exiting..."
 
                 push output_str
                 call writeString@4
@@ -678,9 +695,9 @@ rtc_esp_start
                     push offset toDo_ll_obj
                     call linkedList@load@8
 
-                    string@println_str
-                    string@println_str "opened file"
-                    string@println_str
+                    string@println_str offset output_str
+                    string@println_str offset output_str, "opened file"
+                    string@println_str offset output_str
 
                     call print_todo_list@0
                     
@@ -689,9 +706,10 @@ rtc_esp_start
                     jmp _end_command_search
 
             _input_error:
-                string@println_str
-                string@println_str "Input Error! Try Again"
-                string@println_str
+                ; print error. prompt again
+                string@println_str offset output_str
+                string@println_str offset output_str, "Input Error! Try Again"
+                string@println_str offset output_str
 
                 push output_str
                 call writeString@4
@@ -702,7 +720,7 @@ rtc_esp_start
     _end_prog_loop:
 
 
-rtc_esp_end
+rtc_esp_end ; check for stack corruption. will return non-zero code
 	push	0
 	call	_ExitProcess@4
 
@@ -850,6 +868,8 @@ _exit:
     ret
 print_todo_list@0 endp
 
+; print_instructions@0()
+; returns void
 print_instructions@0 proc near
     ; Please enter a command symbol (+, -, ? or !)
     ; <+> Add Chores
@@ -860,19 +880,21 @@ print_instructions@0 proc near
     ; <[ENTER]> Clear Console
 
     println_str
-    println_str "Please enter a command symbol"
+    print_str "Please enter a command symbol (+, -, ?, *, or "
+    print_array_b 33 ; "!"
+    println_str ")"
 
     print_array_b '<', '+', '>'
-    println_str " Add Chores"
+    println_str " Add Chores (eg. +item or +3item)"
 
     print_array_b '<', '-', '>'
-    println_str " Delete Chores"
+    println_str " Delete Chores (eg. -3 or -item)"
     
     print_array_b '<', '?', '>'
     println_str " View List"
 
     print_array_b '<', '*', '>'
-    println_str " Open New List"
+    println_str " Open New List (eg. * or *new list)"
 
     print_array_b '<', 21h, '>'
     println_str " Save and Exit"

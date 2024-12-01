@@ -27,10 +27,12 @@ include linkedList.inc
 
 .data
 toDo_ll_obj dword 0
-toDo_list_default_file byte "default_list.todo.bin", 0 ; default file
+toDo_list_extension byte ".todo.bin", 0
+toDo_list_default_file byte "default_list", 0 ; default file
 
 ; object used for decoding and parsing
 parse_str dword 0
+output_str dword 0
 
 open_file_str dword 0
 
@@ -45,6 +47,13 @@ rtc_esp_start
     push offset toDo_list_default_file
     push offset open_file_str
     call string@set@8
+    
+    ; string@insert@12(*this, *char, index)
+    ; returns void
+    push -1
+    push offset toDo_list_extension
+    push offset open_file_str
+    call string@insert@12
 
     ; linkedList@load@8(*this, *char)
     ; returns: error code
@@ -52,11 +61,7 @@ rtc_esp_start
     push offset toDo_ll_obj
     call linkedList@load@8
 
-    print_array_b 3ch, 3ch, 3ch ; "<<<"
-    print_str " Command Line ToDo List "
-    print_array_b 3eh, 3eh, 3eh ; ">>>"
-    println_str
-    println_str
+    call print_todo_list@0
 
     call print_instructions@0
 
@@ -75,12 +80,14 @@ rtc_esp_start
         ;;;;; clear console and rewrite for better readability:
         call scrollConsole@0
 
-        print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
-        push parse_str
-        call writeString@4
-        print_array_b 32, 3eh, 3eh, 3eh ; " >>>"
+        set_string offset output_str
 
-        println_str
+        ; string@print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
+        ; push parse_str
+        ; string@writeString@4
+        ; string@print_array_b 32, 3eh, 3eh, 3eh ; " >>>"
+
+        ; string@println_str
 
         ;;;;; check if input matches a command
             ;;;;; check <ENTER>
@@ -228,10 +235,13 @@ rtc_esp_start
 
         ;;;;;;;;;; run commands:
             _enter_command:
+                push output_str
+                call writeString@4
                 call scrollConsole@0
                 jmp _end_command_search
                 
             _plus_command:
+
                 ; string@substr@12(* this, low index, high index)
                 ; returns void
                 push -1 ; get the entire end of string
@@ -281,8 +291,8 @@ rtc_esp_start
                 cmp eax, 0
                 je _plus_command_add_error
 
-                    println_str
-                    print_str "added item #"
+                    string@println_str
+                    string@print_str "added item #"
 
                     ; linkedList@nodeCount@4(* this)
                     ; returns >=0 number of nodes on linked list
@@ -299,22 +309,32 @@ rtc_esp_start
                     _plus_command_inside_range:
 
                     inc edx
-                    print_int edx   ; print item list location
-                    print_array_b 32, 34
+                    string@print_int edx   ; print item list location
+                    string@print_array_b 32, 34
 
                     push parse_str
-                    call writeString@4
+                    string@writeString@4
 
-                    print_array_b 34
-                    println_str
-                    println_str
+                    string@print_array_b 34
+                    string@println_str
+                    string@println_str
+
+                    call print_todo_list@0
+                    
+                    push output_str
+                    call writeString@4
 
                     jmp _end_command_search
 
                 _plus_command_add_error:
-                    println_str
-                    println_str "Error adding to list"
-                    println_str
+                    string@println_str
+                    string@println_str "Error adding to list"
+                    string@println_str
+
+                    call print_todo_list@0
+
+                    push output_str
+                    call writeString@4
                     jmp _end_command_search
 
             _minus_command:
@@ -392,13 +412,13 @@ rtc_esp_start
 
                     ;;;;; delete item at selected index
                     push edx
-                    println_str
-                    print_str "deleted item #"
+                    string@println_str
+                    string@print_str "deleted item #"
                         pop edx
                         push edx
                         inc edx
-                    print_int edx
-                    print_array_b 32, 34
+                    string@print_int edx
+                    string@print_array_b 32, 34
 
                         ; linkedList@getNodeData@8(* this, index)
                         ; returns pointer to node data. null if node doesn't exist
@@ -409,7 +429,7 @@ rtc_esp_start
                         call linkedList@getNodeData@8
 
                     push eax
-                    call writeString@4
+                    string@writeString@4
 
                         ; linkedList@deleteNode@8(* this, index)
                         ; returns void
@@ -417,26 +437,41 @@ rtc_esp_start
                         push offset toDo_ll_obj
                         call linkedList@deleteNode@8
 
-                    print_array_b 32
-                    println_str
-                    println_str
+                    string@print_array_b 32
+                    string@println_str
+                    string@println_str
+
+                    call print_todo_list@0
+                    
+                    push output_str
+                    call writeString@4
 
                     jmp _end_command_search
 
                     _minus_command_number_error_format:
-                        println_str
-                        println_str "delete command format error"
-                        println_str
+                        string@println_str
+                        string@println_str "delete command format error"
+                        string@println_str
+
+                        call print_todo_list@0
+                    
+                        push output_str
+                        call writeString@4
                         jmp _end_command_search
 
                     _minus_command_number_error_range:
-                        println_str
-                        println_str "delete command range error"
-                        println_str
+                        string@println_str
+                        string@println_str "delete command range error"
+                        string@println_str
+
+                        call print_todo_list@0
+                    
+                        push output_str
+                        call writeString@4
                         jmp _end_command_search
 
                 _minus_command_string:
-                    println_str
+                    string@println_str
 
                     push offset toDo_ll_obj
                     call linkedList@nodeCount@4
@@ -485,12 +520,12 @@ rtc_esp_start
 
                         _minus_command_string_compare_hit:
 
-                            print_str "deleted "
-                            print_array_b 34
+                            string@print_str "deleted "
+                            string@print_array_b 34
                             push [esp]
-                            call writeString@4
-                            print_array_b 34
-                            println_str
+                            string@writeString@4
+                            string@print_array_b 34
+                            string@println_str
 
                             add esp, 4 ; deallocate the string
                             
@@ -506,33 +541,46 @@ rtc_esp_start
 
                     _minus_command_string_loop_end:
 
-                    println_str
+                    string@println_str
+                    call print_todo_list@0
+                    
+                    push output_str
+                    call writeString@4
                     jmp _end_command_search
 
 
             _question_command:
 
                 call print_todo_list@0
+                println_str
+
+                push output_str
+                call writeString@4
                 jmp _end_command_search
 
             _help_command:
-                println_str
                 call print_instructions@0
+
+                push output_str
+                call writeString@4
                 jmp _end_command_search
 
             _exclamation_command:
-                println_str
-                print_str "saving "
+                string@println_str
+                string@print_str "Saving "
                 push open_file_str
-                call writeString@4
-                println_str
+                string@writeString@4
+                string@println_str
 
                 ; linkedList@store@8(*this, *char)
                 ; returns: 0 failed, 1 success
                 push open_file_str
                 push offset toDo_ll_obj
                 call linkedList@store@8
-                println_str "Exiting..."
+                string@println_str "Exiting..."
+
+                push output_str
+                call writeString@4
                 jmp _end_prog_loop
             
             _star_command:
@@ -562,26 +610,7 @@ rtc_esp_start
                     push offset open_file_str
                     call string@set@8
 
-                    insert_string offset open_file_str, ".todo.bin", -1
-
-                    ; linkedList@load@8(*this, *char)
-                    ; returns: error code
-                    push open_file_str
-                    push offset toDo_ll_obj
-                    call linkedList@load@8
-
-                    cmp eax, 0
-                    jne _star_command_new_file
-                        println_str
-                        println_str "opened list"
-                        println_str
-                        jmp _end_command_search
-
-                    _star_command_new_file:
-                        println_str
-                        println_str "opened new list"
-                        println_str
-                        jmp _end_command_search
+                    jmp _star_command_load
 
                 _star_command_open_default:
 
@@ -591,21 +620,37 @@ rtc_esp_start
                     push offset open_file_str
                     call string@set@8
 
+                _star_command_load:
+                    ; string@insert@12(*this, *char, index)
+                    ; returns void
+                    push -1
+                    push offset toDo_list_extension
+                    push offset open_file_str
+                    call string@insert@12
+
                     ; linkedList@load@8(*this, *char)
                     ; returns: error code
                     push open_file_str
                     push offset toDo_ll_obj
                     call linkedList@load@8
 
-                    println_str
-                    println_str "opened default list"
-                    println_str
+                    string@println_str
+                    string@println_str "opened file"
+                    string@println_str
+
+                    call print_todo_list@0
+                    
+                    push output_str
+                    call writeString@4
                     jmp _end_command_search
 
             _input_error:
-                println_str
-                println_str "Input Error! Try Again"
-                println_str
+                string@println_str
+                string@println_str "Input Error! Try Again"
+                string@println_str
+
+                push output_str
+                call writeString@4
                 jmp _end_command_search
 
         _end_command_search:
@@ -624,6 +669,30 @@ main ENDP
 ; print_todo_list@0(void)
 ; returns void
 print_todo_list@0 proc near
+    print_array_b 3ch, 3ch, 3ch, 32 ; "<<< "
+
+    ; util@charCount@4 (* char buffer)
+    ; returns number of characters, null terminator not included
+    push offset toDo_list_extension
+    call util@charCount@4
+    push eax
+
+    ; string@length@4(* this)
+    ; returns string length
+    push offset open_file_str
+    call string@length@4
+    
+    pop ecx
+    sub eax, ecx ; get list title only
+
+    ; writeLine@8(* data, dataLength)
+    ; returns void
+    push eax
+    push open_file_str
+    call writeLine@8
+
+    print_array_b 32, 3eh, 3eh, 3eh ; " >>>"
+    println_str
     println_str
 
     ;;;;; get list item count
@@ -665,7 +734,6 @@ print_todo_list@0 proc near
         jmp _question_command_loop_start
         
     _question_command_loop_end:
-    println_str
 
 _exit:
     ret
@@ -680,6 +748,7 @@ print_instructions@0 proc near
     ; <*> Open List
     ; <[ENTER]> Clear Console
 
+    println_str
     println_str "Please enter a command symbol"
 
     print_array_b '<', '+', '>'

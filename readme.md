@@ -60,7 +60,7 @@ A specific item can be removed using an index immediately after the <-> command:
 Each list is automatically saved when switching out lists but the last list can be saved using the <!> command which will also exit the application.
 
 ### Help
-To bring up th instruction screen once again, enter the word "help."\
+To bring up the instructions on screen once again, enter the word "help."\
 Caps ignored
 
 ## Design

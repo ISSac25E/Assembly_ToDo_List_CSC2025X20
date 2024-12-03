@@ -7,7 +7,4 @@
 !*.md
 !*.inc
 !*.todo.bin
-!*.exe
 !*.png
-
-*.txt

@@ -20,11 +20,11 @@
 
 extern _ExitProcess@4: near
 
-include string.inc
-include rtc_esp.inc
-include utility.inc
-include readWrite.inc
-include linkedList.inc
+include src/string.inc
+include src/rtc_esp.inc
+include src/utility.inc
+include src/readWrite.inc
+include src/linkedList.inc
 
 .data
 toDo_ll_obj dword 0

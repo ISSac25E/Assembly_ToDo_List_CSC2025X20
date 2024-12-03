@@ -6,8 +6,6 @@
 !*.asm
 !*.md
 !*.inc
-!*.vcxproj*
-!*.sln
 !*.todo.bin
 !*.exe
 !*.png

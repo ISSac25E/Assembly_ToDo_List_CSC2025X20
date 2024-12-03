@@ -29,35 +29,39 @@ The new list will be immediately displayed with its contents. If a new list name
 
 Using the <\?> command alone, the current working list will be displayed along with its name.
 
-![alt text](image.png)
+![alt text](img/image.png)
 
 ### Adding <+>
 New items can be added using the <+> command with the item following it immediately:
 
-![alt text](image-1.png)
+![alt text](img/image-1.png)
 
 An index can be given before the item to add it in a specific location:
 
-![alt text](image-2.png)
+![alt text](img/image-2.png)
 
 The application will imediatly follow with the result of the command and an updated list above:
 
-![alt text](image-4.png)
+![alt text](img/image-4.png)
 
 ### Removing <->
 There are two methods that an item can be removed using the <-> command.
 
 A <-> followed immediately with a string will attempt to match any items with that string and will remove them all:
 
-![alt text](image-3.png)
-![alt text](image-5.png)
+![alt text](img/image-3.png)
+![alt text](img/image-5.png)
 
 A specific item can be removed using an index immediately after the <-> command:
 
-![alt text](image-6.png)
+![alt text](img/image-6.png)
 
 ### Save and Exit <!>
 Each list is automatically saved when switching out lists but the last list can be saved using the <!> command which will also exit the application.
+
+### Help
+To bring up th instruction screen once again, enter the word "help."\
+Caps ignored
 
 ## Design
 Each list is held by a linked list with ability to insert, remove and swap items with ease.

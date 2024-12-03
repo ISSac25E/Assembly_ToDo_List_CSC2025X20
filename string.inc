@@ -33,6 +33,7 @@ extern string@toLower@4 : proc
 ; returns void
 extern string@delete@4 : proc
 
+; set string object to constant string
 set_string macro this:req, str:=<"">
     push_str &str&
     
@@ -43,6 +44,7 @@ set_string macro this:req, str:=<"">
     pop_str &str&
 endm
 
+; insert constant string to string object at index
 insert_string macro this:req, str:req, index:=<-1>
     push_str &str&
 
@@ -55,6 +57,7 @@ insert_string macro this:req, str:req, index:=<-1>
     pop_str &str&
 endm
 
+; compare constant string to string object starting as index position
 strcmp macro this:req, str:req, index:=<0>
     push_str &str&
 
